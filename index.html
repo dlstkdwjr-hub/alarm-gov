@@ -105,51 +105,52 @@ let ROWS = [];
 const $ = s => document.querySelector(s);
 const DT = /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g;
 const ELAPSED = /\b\d{2}:\d{2}:\d{2}\b/;
+const IDRE = /(?:^|\s)(\d{1,3})(?=\s)/g;
 const KINDS = ['실제','일상점검','오작동','정기점검','점검'];
 
-async function pdfToLines(file){
+// PDF의 모든 텍스트를 공백으로 이어 하나의 문자열로
+async function pdfToText(file){
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  let lines = [];
+  let parts = [];
   for(let p=1; p<=pdf.numPages; p++){
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
-    const byY = {};
-    tc.items.forEach(it=>{
-      if(!it.str.trim()) return;
-      const y = Math.round(it.transform[5]);
-      const key = Object.keys(byY).find(k=>Math.abs(k-y)<=3) || y;
-      (byY[key]=byY[key]||[]).push({x:it.transform[4], s:it.str});
-    });
-    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
-      const line = byY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ')
-                   .replace(/\s+/g,' ').trim();
-      if(line) lines.push(line);
-    });
+    parts.push(tc.items.map(it=>it.str).join(' '));
   }
-  return lines;
+  return parts.join(' ').replace(/\s+/g,' ').trim();
 }
 
-function parseRows(lines){
+// 날짜·시각 쌍(감지/복귀)을 기준으로 행을 잡아낸다
+function parseRows(text){
+  const dts = [...text.matchAll(DT)];
   const rows = [];
-  for(const line of lines){
-    if(!/^\d+\s/.test(line)) continue;
-    const matches = [...line.matchAll(DT)];
-    if(!matches.length) continue;
-    const detect = matches[0][0];
-    const restore = matches.length>1 ? matches[1][0] : '';
-    const head = line.slice(0, matches[0].index).trim().split(' ');
-    const id = head[0];
-    const name = head[1] || '';
-    const event = head.slice(2).join(' ').trim();
-    // 경과시간: 마지막 datetime이 끝나는 인덱스 뒤에서만 탐색
-    const last = matches[matches.length-1];
-    const tail = line.slice(last.index + last[0].length);
+  for(let i=0; i+1<dts.length; i+=2){
+    const detect = dts[i], restore = dts[i+1];
+    const headStart = i===0 ? 0 : dts[i-1].index + dts[i-1][0].length;
+    const head = text.slice(headStart, detect.index).trim();
+    let id='', name='', event='';
+    const ids = [...head.matchAll(IDRE)];
+    if(ids.length){
+      const last = ids[ids.length-1];
+      id = last[1];
+      const idEnd = last.index + last[0].length;
+      const rest = head.slice(idEnd).trim();
+      const parts = rest.split(' ');
+      name = parts[0] || '';
+      event = parts.slice(1).join(' ');
+    } else {
+      const parts = head.split(' ');
+      name = parts[0] || ''; event = parts.slice(1).join(' ');
+    }
+    const tailEnd = (i+2 < dts.length) ? dts[i+2].index : text.length;
+    const tail = text.slice(restore.index + restore[0].length, tailEnd);
     const em = tail.match(ELAPSED);
     const elapsed = em ? em[0] : '';
-    const kind = KINDS.find(k=> line.includes(k)) || '';
-    rows.push({id,name,event,detect,restore,elapsed,kind,
-               date:detect.slice(0,10), time:detect.slice(11,19)});
+    let kind='', kpos=Infinity;
+    for(const k of KINDS){ const idx=tail.indexOf(k); if(idx>=0 && idx<kpos){kpos=idx; kind=k;} }
+    rows.push({id,name,event,detect:detect[0],restore:restore[0],elapsed,kind,
+               date:detect[0].slice(0,10), time:detect[0].slice(11,19)});
   }
   return rows;
 }
@@ -207,9 +208,11 @@ async function handleFile(file){
   $('#spinner').style.display='block';
   $('#fname').textContent = file.name;
   try{
-    const lines = await pdfToLines(file);
-    ROWS = parseRows(lines);
-    if(!ROWS.length){ alert('PDF에서 경보이력 데이터를 찾지 못했습니다. 형식을 확인해주세요.'); }
+    const text = await pdfToText(file);
+    ROWS = parseRows(text);
+    if(!ROWS.length){
+      alert('경보이력 데이터를 찾지 못했습니다.\n\n[추출된 텍스트 일부]\n' + text.slice(0,180));
+    }
     localStorage.setItem('alarmRows', JSON.stringify(ROWS));
     localStorage.setItem('alarmFile', file.name);
     buildFilters(); render();
