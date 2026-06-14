@@ -3,234 +3,298 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#6366F1">
+<meta name="theme-color" content="#4F46E5">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>경보이력 현황</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-:root{--indigo:#6366F1;--indigo-d:#4F46E5;--bg:#F5F6FA;--card:#fff;--line:#E5E7EB;--txt:#1F2937;--sub:#6B7280;}
+:root{--indigo:#4F46E5;--indigo-l:#6366F1;--bg:#F4F5FB;--card:#fff;--line:#ECECF3;--txt:#1E2230;--sub:#8A8FA3;--soft:#F7F8FC;--red:#E04A40;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);padding-bottom:env(safe-area-inset-bottom);}
-.header{background:linear-gradient(135deg,var(--indigo),var(--indigo-d));color:#fff;padding:calc(env(safe-area-inset-top) + 18px) 18px 20px;}
-.header h1{margin:0;font-size:20px;font-weight:700;}
-.header p{margin:6px 0 0;font-size:13px;opacity:.9;}
-.bigcount{margin-top:14px;font-size:15px;}
-.bigcount b{font-size:30px;font-weight:800;margin-right:4px;}
-.wrap{padding:16px;max-width:640px;margin:0 auto;}
-.loadbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--card);border:2px dashed var(--indigo);color:var(--indigo-d);font-size:15px;font-weight:700;padding:16px;border-radius:14px;cursor:pointer;margin-bottom:8px;}
-.loadbtn:active{background:#EEF0FF;}
-.fname{font-size:12px;color:var(--sub);text-align:center;margin-bottom:16px;min-height:16px;}
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;}
-.card .ico{font-size:18px;}
-.card .lbl{font-size:12px;color:var(--sub);margin-top:6px;}
-.card .val{font-size:24px;font-weight:800;margin-top:2px;}
-.sec-title{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:6px;}
-.filters{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:18px;}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-.field select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:14px;color:var(--txt);}
-.resetbtn{width:100%;background:#F3F4F6;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:13px;color:var(--sub);cursor:pointer;margin-top:4px;}
-.resetbtn:active{background:#E5E7EB;}
-.list{display:flex;flex-direction:column;gap:8px;}
-.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(env(safe-area-inset-bottom) + 24px);-webkit-font-smoothing:antialiased;}
+.header{background:linear-gradient(135deg,#5B54E6,#4338CA);color:#fff;padding:calc(env(safe-area-inset-top) + 22px) 20px 26px;border-radius:0 0 24px 24px;box-shadow:0 8px 24px rgba(67,56,202,.18);}
+.header .row{display:flex;align-items:center;justify-content:space-between;}
+.header h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.3px;}
+.header .badge{font-size:11px;background:rgba(255,255,255,.18);padding:5px 11px;border-radius:20px;font-weight:600;}
+.header p{margin:7px 0 0;font-size:12.5px;opacity:.85;}
+.header .big{margin-top:16px;display:flex;align-items:baseline;gap:6px;}
+.header .big b{font-size:34px;font-weight:800;line-height:1;}
+.header .big span{font-size:14px;opacity:.85;}
+.wrap{padding:18px 16px 0;max-width:680px;margin:0 auto;}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;font-size:14px;font-weight:700;padding:13px;border-radius:13px;cursor:pointer;transition:.15s;border:1.5px solid var(--indigo);}
+.btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 3px 10px rgba(79,70,229,.22);}
+.btn.primary:active{background:#3F38C5;}
+.btn.ghost{background:#fff;color:var(--indigo);box-shadow:0 2px 8px rgba(79,70,229,.08);}
+.btn.ghost:active{background:var(--soft);}
+.fname{font-size:11.5px;color:var(--sub);text-align:center;margin:8px 0 0;min-height:14px;}
+.spinner{display:none;text-align:center;color:var(--indigo);font-size:13px;padding:12px;font-weight:600;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:18px 0;}
+.card{background:var(--card);border-radius:16px;padding:15px 16px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
+.card .ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.card.c1 .ico{background:#EEF0FF;}.card.c2 .ico{background:#E9FAF1;}.card.c3 .ico{background:#EAF2FF;}.card.c4 .ico{background:#FFF0EF;}
+.card .lbl{font-size:12px;color:var(--sub);margin-top:11px;font-weight:500;}
+.card .val{font-size:26px;font-weight:800;margin-top:1px;letter-spacing:-.5px;}
+.panel{background:var(--card);border-radius:16px;padding:16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
+.sec-title{font-size:13.5px;font-weight:800;margin:0 0 13px;display:flex;align-items:center;gap:7px;letter-spacing:-.2px;}
+.sec-title .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:600;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px;}
+.field label{display:block;font-size:11.5px;color:var(--sub);margin-bottom:5px;font-weight:600;}
+.field select,.field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--soft);font-size:13.5px;color:var(--txt);font-weight:500;}
+.field select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A8FA3' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
+.field select:focus,.field input:focus{outline:none;border-color:var(--indigo-l);background-color:#fff;}
+.resetbtn{width:100%;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:11px;font-size:12.5px;color:var(--sub);font-weight:600;cursor:pointer;margin-top:3px;}
+.resetbtn:active{background:#ECECF3;}
+.list{display:flex;flex-direction:column;gap:10px;}
+.item{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 2px 8px rgba(30,34,48,.04);border-left:3px solid var(--line);}
+.item.tp-power{border-left-color:#F2645B;}.item.tp-mov{border-left-color:#4C8DF6;}.item.tp-etc{border-left-color:#B8BDCC;}
 .item .top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-.item .name{font-weight:700;font-size:15px;}
-.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
-.t-power{background:#FEF2F2;color:#DC2626;}
-.t-mov{background:#EFF6FF;color:#2563EB;}
-.t-etc{background:#F3F4F6;color:#6B7280;}
-.item .meta{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.7;}
-.item .meta span{display:inline-block;margin-right:12px;}
-.empty{text-align:center;color:var(--sub);font-size:14px;padding:40px 0;line-height:1.6;}
-.spinner{display:none;text-align:center;color:var(--indigo-d);font-size:14px;padding:20px;}
+.item .name{font-weight:800;font-size:14.5px;letter-spacing:-.2px;}
+.item .name small{font-weight:600;color:var(--sub);font-size:11px;margin-left:5px;}
+.tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap;}
+.t-power{background:#FFF0EF;color:#E04A40;}.t-mov{background:#EAF2FF;color:#2F6FE0;}.t-etc{background:#F1F2F7;color:#7A8095;}
+.item .meta{font-size:12px;color:var(--sub);margin-top:9px;display:flex;flex-wrap:wrap;gap:5px 14px;line-height:1.5;}
+.item .meta b{color:var(--txt);font-weight:600;}
+.item .acts{display:flex;gap:8px;margin-top:11px;border-top:1px solid var(--soft);padding-top:10px;}
+.item .acts button{flex:1;font-size:12px;font-weight:700;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--sub);cursor:pointer;}
+.item .acts .ed{color:var(--indigo);}
+.item .acts .del{color:var(--red);}
+.empty{text-align:center;color:var(--sub);font-size:13.5px;padding:44px 0;line-height:1.7;}
 input[type=file]{display:none;}
-.foot{text-align:center;color:#9CA3AF;font-size:11px;margin:20px 0 8px;line-height:1.6;}
+.foot{text-align:center;color:#B5B9C7;font-size:10.5px;margin:22px 0 8px;line-height:1.7;}
+.foot a{color:var(--sub);text-decoration:underline;cursor:pointer;}
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(20,22,35,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+.overlay.on{display:flex;}
+.sheet{background:#fff;width:100%;max-width:680px;border-radius:22px 22px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom) + 20px);max-height:92vh;overflow-y:auto;animation:up .22s ease;}
+@keyframes up{from{transform:translateY(40px);opacity:.6;}to{transform:translateY(0);opacity:1;}}
+.sheet h2{margin:0 0 16px;font-size:17px;font-weight:800;}
+.sheet .field{margin-bottom:12px;}
+.sheet .frow{margin-bottom:0;}
+.sheet .save{width:100%;background:var(--indigo);color:#fff;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px;}
+.sheet .cancel{width:100%;background:var(--soft);color:var(--sub);border:none;border-radius:13px;padding:13px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:9px;}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>📋 경보이력 현황</h1>
-  <p>지역: 경주 · 2026년 업무외 이벤트</p>
-  <div class="bigcount"><b id="hd-count">-</b>건</div>
+  <div class="row"><h1>📋 경보이력 현황</h1><span class="badge" id="hd-region">경주·외동</span></div>
+  <p>정압기 경보이력 통합 대시보드</p>
+  <div class="big"><b id="hd-count">0</b><span>건</span></div>
 </div>
 
 <div class="wrap">
-  <label class="loadbtn">
-    📄 PDF 불러오기
-    <input type="file" id="pdfInput" accept="application/pdf">
-  </label>
+  <div class="btnrow">
+    <button class="btn primary" id="addBtn">＋ 이벤트 추가</button>
+    <label class="btn ghost">📄 PDF 불러오기<input type="file" id="pdfInput" accept="application/pdf"></label>
+  </div>
   <div class="fname" id="fname"></div>
   <div class="spinner" id="spinner">PDF 분석 중…</div>
 
   <div class="cards">
-    <div class="card"><div class="ico">📊</div><div class="lbl">총 이벤트</div><div class="val" id="c-total">-</div></div>
-    <div class="card"><div class="ico">📍</div><div class="lbl">관련 정압기</div><div class="val" id="c-station">-</div></div>
-    <div class="card"><div class="ico">🔧</div><div class="lbl">MOV/SSV</div><div class="val" id="c-mov">-</div></div>
-    <div class="card"><div class="ico">⚡</div><div class="lbl">정전</div><div class="val" id="c-power">-</div></div>
+    <div class="card c1"><div class="ico">📊</div><div class="lbl">총 이벤트</div><div class="val" id="c-total">0</div></div>
+    <div class="card c2"><div class="ico">📍</div><div class="lbl">관련 정압기</div><div class="val" id="c-station">0</div></div>
+    <div class="card c3"><div class="ico">🔧</div><div class="lbl">MOV / SSV</div><div class="val" id="c-mov">0</div></div>
+    <div class="card c4"><div class="ico">⚡</div><div class="lbl">정전</div><div class="val" id="c-power">0</div></div>
   </div>
 
-  <div class="filters">
+  <div class="panel">
     <div class="sec-title">🔍 필터</div>
     <div class="frow">
-      <div class="field"><label>정압기명</label><select id="f-name"><option value="">전체</option></select></div>
-      <div class="field"><label>이벤트명</label><select id="f-event"><option value="">전체</option></select></div>
+      <div class="field"><label>지역</label><select id="f-region"></select></div>
+      <div class="field"><label>정압기명</label><select id="f-name"></select></div>
     </div>
     <div class="frow">
-      <div class="field"><label>날짜</label><select id="f-date"><option value="">전체</option></select></div>
-      <div class="field"><label>점검구분</label><select id="f-kind"><option value="">전체</option></select></div>
+      <div class="field"><label>이벤트명</label><select id="f-event"></select></div>
+      <div class="field"><label>점검구분</label><select id="f-kind"></select></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>날짜</label><select id="f-date"></select></div>
+      <div class="field"><label>　</label><select id="f-pad" style="visibility:hidden"></select></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>시작 시간대</label><select id="f-sh"></select></div>
+      <div class="field"><label>종료 시간대</label><select id="f-eh"></select></div>
     </div>
     <button class="resetbtn" id="resetBtn">↺ 필터 초기화</button>
   </div>
 
-  <div class="sec-title">📑 이벤트 목록 <span id="listCount" style="color:var(--sub);font-weight:400;"></span></div>
-  <div class="list" id="list"><div class="empty">상단의 <b>PDF 불러오기</b>로<br>경보이력 PDF를 선택하세요.</div></div>
+  <div class="panel" style="background:transparent;box-shadow:none;padding:0;">
+    <div class="sec-title">📑 이벤트 목록 <span class="cnt" id="listCount"></span></div>
+    <div class="list" id="list"></div>
+  </div>
 
-  <div class="foot">폰 안에서 직접 PDF를 분석합니다<br>서버 전송 없음 · 오프라인 지원</div>
+  <div class="foot">내장 데이터 51건 · 오프라인 지원 · 휴대폰 안에서만 동작<br>
+    <a id="restoreBtn">기본(원본) 데이터로 초기화</a></div>
+</div>
+
+<!-- 입력/수정 시트 -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">이벤트 추가</h2>
+    <div class="frow">
+      <div class="field"><label>지역</label><input id="i-region" placeholder="예: 경주"></div>
+      <div class="field"><label>정압기명</label><input id="i-name" placeholder="예: 경주지구"></div>
+    </div>
+    <div class="field"><label>이벤트명</label><input id="i-event" placeholder="예: 정전 / RTU 외함 / SSV1"></div>
+    <div class="field"><label>감지 일시</label><input id="i-detect" type="datetime-local" step="1"></div>
+    <div class="field"><label>복귀 일시</label><input id="i-restore" type="datetime-local" step="1"></div>
+    <div class="field"><label>점검구분</label>
+      <select id="i-kind"><option>실제</option><option>일상점검</option><option>오작동</option><option>정기점검</option><option>점검</option></select>
+    </div>
+    <button class="save" id="saveBtn">저장</button>
+    <button class="cancel" id="cancelBtn">취소</button>
+  </div>
 </div>
 
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+const EMBEDDED = [{"region": "경주", "id": "71", "name": "건천용명", "event": "가스누출", "detect": "2025-01-01 09:01:14", "restore": "2025-01-01 09:01:19", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-01-01", "sh": "09", "eh": "09"}, {"region": "경주", "id": "36", "name": "시래동국태", "event": "정전", "detect": "2025-01-01 12:15:40", "restore": "2025-01-01 12:15:42", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-01-01", "sh": "12", "eh": "12"}, {"region": "경주", "id": "71", "name": "건천용명", "event": "RTU 외함", "detect": "2025-01-04 00:41:23", "restore": "2025-01-04 00:42:14", "kind": "일상점검", "elapsed": "00:00:51", "date": "2025-01-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-09 23:14:45", "restore": "2025-01-09 23:15:51", "kind": "일상점검", "elapsed": "00:01:06", "date": "2025-01-09", "sh": "23", "eh": "23"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-01-10 12:08:43", "restore": "2025-01-10 12:14:58", "kind": "일상점검", "elapsed": "00:06:15", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-10 12:15:21", "restore": "2025-01-10 12:16:22", "kind": "일상점검", "elapsed": "00:01:01", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2025-01-13 07:18:13", "restore": "2025-01-13 07:18:14", "kind": "일상점검", "elapsed": "00:00:01", "date": "2025-01-13", "sh": "07", "eh": "07"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "정전", "detect": "2025-02-07 19:53:56", "restore": "2025-02-07 19:53:58", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-02-08 00:49:15", "restore": "2025-02-08 00:49:17", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-08", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "RTU 외함", "detect": "2025-02-08 01:35:46", "restore": "2025-02-08 02:07:34", "kind": "일상점검", "elapsed": "00:31:48", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-02-08 01:36:24", "restore": "2025-02-08 02:06:57", "kind": "일상점검", "elapsed": "00:30:33", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "67", "name": "서면아화", "event": "정전", "detect": "2025-02-09 11:13:48", "restore": "2025-02-09 11:15:13", "kind": "실제", "elapsed": "00:01:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "32", "name": "건천녹지", "event": "정전", "detect": "2025-02-09 11:13:49", "restore": "2025-02-09 11:46:14", "kind": "실제", "elapsed": "00:32:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "80", "name": "하동마을", "event": "정전", "detect": "2025-02-12 23:18:48", "restore": "2025-02-12 23:20:09", "kind": "실제", "elapsed": "00:01:21", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "정전", "detect": "2025-02-12 23:20:10", "restore": "2025-02-12 23:20:11", "kind": "실제", "elapsed": "00:00:01", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "통신이상 FMS", "detect": "2025-02-18 08:48:14", "restore": "2025-02-18 08:49:04", "kind": "일상점검", "elapsed": "00:00:50", "date": "2025-02-18", "sh": "08", "eh": "08"}, {"region": "외동", "id": "65", "name": "외동미소", "event": "2차압력 하한", "detect": "2025-03-31 06:33:32", "restore": "2025-03-31 06:33:34", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-03-31", "sh": "06", "eh": "06"}, {"region": "외동", "id": "18", "name": "황성유원", "event": "정전", "detect": "2025-04-18 22:29:29", "restore": "2025-04-18 22:48:23", "kind": "일상점검", "elapsed": "00:18:54", "date": "2025-04-18", "sh": "22", "eh": "22"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "정전", "detect": "2025-04-18 19:21:02", "restore": "2025-04-18 20:23:55", "kind": "일상점검", "elapsed": "01:02:53", "date": "2025-04-18", "sh": "19", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:14:09", "restore": "2025-04-18 20:26:08", "kind": "일상점검", "elapsed": "00:11:59", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "가스누출", "detect": "2025-04-18 20:16:55", "restore": "2025-04-18 20:17:05", "kind": "일상점검", "elapsed": "00:00:10", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:26:10", "restore": "2025-04-18 20:26:15", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:13:54", "restore": "2025-04-30 01:13:57", "kind": "일상점검", "elapsed": "00:00:03", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:15:28", "restore": "2025-04-30 01:15:35", "kind": "일상점검", "elapsed": "00:00:07", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "경주", "id": "24", "name": "동천푸르지오", "event": "정전", "detect": "2026-01-20 05:14:44", "restore": "2026-01-20 05:14:48", "kind": "실제", "elapsed": "00:00:04", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "17", "name": "황성삼보", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "18", "name": "황성유원", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:20:46", "kind": "실제", "elapsed": "00:05:59", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "SSV1", "detect": "2026-04-01 02:43:09", "restore": "2026-04-01 03:53:05", "kind": "일상점검", "elapsed": "01:09:56", "date": "2026-04-01", "sh": "02", "eh": "03"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 03:37:58", "restore": "2026-04-01 05:17:19", "kind": "일상점검", "elapsed": "01:39:21", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "RTU 외함", "detect": "2026-04-01 03:40:46", "restore": "2026-04-01 05:21:08", "kind": "일상점검", "elapsed": "01:40:22", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 05:18:38", "restore": "2026-04-01 05:19:51", "kind": "일상점검", "elapsed": "00:01:13", "date": "2026-04-01", "sh": "05", "eh": "05"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 18:34:30", "restore": "2026-04-03 19:18:37", "kind": "일상점검", "elapsed": "00:44:07", "date": "2026-04-03", "sh": "18", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:18:49", "restore": "2026-04-03 19:20:20", "kind": "일상점검", "elapsed": "00:01:31", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 19:25:50", "restore": "2026-04-03 19:59:26", "kind": "일상점검", "elapsed": "00:33:36", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:59:26", "restore": "2026-04-03 20:12:15", "kind": "일상점검", "elapsed": "00:12:49", "date": "2026-04-03", "sh": "19", "eh": "20"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-04-04 11:46:37", "restore": "2026-04-04 11:49:25", "kind": "실제", "elapsed": "00:02:48", "date": "2026-04-04", "sh": "11", "eh": "11"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-01 22:52:27", "restore": "2026-05-02 17:52:04", "kind": "오작동", "elapsed": "18:59:37", "date": "2026-05-01", "sh": "22", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 14:53:40", "restore": "2026-05-02 16:46:30", "kind": "오작동", "elapsed": "01:52:50", "date": "2026-05-02", "sh": "14", "eh": "16"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "RTU 외함", "detect": "2026-05-02 16:46:37", "restore": "2026-05-02 17:53:05", "kind": "오작동", "elapsed": "01:06:28", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 16:51:53", "restore": "2026-05-02 17:51:58", "kind": "오작동", "elapsed": "01:00:05", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:09:23", "restore": "2026-05-03 10:09:25", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:10:17", "restore": "2026-05-03 10:10:19", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 08:08:59", "restore": "2026-05-20 08:09:01", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "08", "eh": "08"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 18:40:07", "restore": "2026-05-20 18:40:09", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "18", "eh": "18"}];
 let ROWS = [];
-const $ = s => document.querySelector(s);
-const DT = /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g;
-const ELAPSED = /\b\d{2}:\d{2}:\d{2}\b/;
-const IDRE = /(?:^|\s)(\d{1,3})(?=\s)/g;
-const KINDS = ['실제','일상점검','오작동','정기점검','점검'];
+let editIdx = -1;
 
-// PDF의 모든 텍스트를 공백으로 이어 하나의 문자열로
+const $ = s => document.querySelector(s);
+const DT=/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g, ELAPSED=/\b\d{2}:\d{2}:\d{2}\b/, IDRE=/(?:^|\s)(\d{1,3})(?=\s)/g;
+const KINDS=['실제','일상점검','오작동','정기점검','점검'];
+
+function load(){
+  try{const s=JSON.parse(localStorage.getItem('alarmRows')||'null');
+    ROWS = (s&&s.length)? s : EMBEDDED.map(o=>({...o}));}
+  catch(e){ROWS=EMBEDDED.map(o=>({...o}));}
+}
+function save(){localStorage.setItem('alarmRows',JSON.stringify(ROWS));}
+function elapsedCalc(d,r){
+  const a=new Date(d.replace(' ','T')),b=new Date(r.replace(' ','T'));
+  let s=Math.max(0,Math.round((b-a)/1000));
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor(s%3600/60)).padStart(2,'0');
+  const ss=String(s%60).padStart(2,'0');return `${h}:${m}:${ss}`;
+}
+function enrich(r){
+  r.elapsed=elapsedCalc(r.detect,r.restore);
+  r.date=r.detect.slice(0,10);r.sh=r.detect.slice(11,13);r.eh=r.restore.slice(11,13);return r;
+}
+
 async function pdfToText(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  let parts = [];
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const tc = await page.getTextContent();
-    parts.push(tc.items.map(it=>it.str).join(' '));
-  }
+  const buf=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf}).promise;let parts=[];
+  for(let p=1;p<=pdf.numPages;p++){const tc=await(await pdf.getPage(p)).getTextContent();parts.push(tc.items.map(i=>i.str).join(' '));}
   return parts.join(' ').replace(/\s+/g,' ').trim();
 }
-
-// 날짜·시각 쌍(감지/복귀)을 기준으로 행을 잡아낸다
-function parseRows(text){
-  const dts = [...text.matchAll(DT)];
-  const rows = [];
-  for(let i=0; i+1<dts.length; i+=2){
-    const detect = dts[i], restore = dts[i+1];
-    const headStart = i===0 ? 0 : dts[i-1].index + dts[i-1][0].length;
-    const head = text.slice(headStart, detect.index).trim();
-    let id='', name='', event='';
-    const ids = [...head.matchAll(IDRE)];
-    if(ids.length){
-      const last = ids[ids.length-1];
-      id = last[1];
-      const idEnd = last.index + last[0].length;
-      const rest = head.slice(idEnd).trim();
-      const parts = rest.split(' ');
-      name = parts[0] || '';
-      event = parts.slice(1).join(' ');
-    } else {
-      const parts = head.split(' ');
-      name = parts[0] || ''; event = parts.slice(1).join(' ');
-    }
-    const tailEnd = (i+2 < dts.length) ? dts[i+2].index : text.length;
-    const tail = text.slice(restore.index + restore[0].length, tailEnd);
-    const em = tail.match(ELAPSED);
-    const elapsed = em ? em[0] : '';
-    let kind='', kpos=Infinity;
-    for(const k of KINDS){ const idx=tail.indexOf(k); if(idx>=0 && idx<kpos){kpos=idx; kind=k;} }
-    rows.push({id,name,event,detect:detect[0],restore:restore[0],elapsed,kind,
-               date:detect[0].slice(0,10), time:detect[0].slice(11,19)});
+function parsePDF(text){
+  const dts=[...text.matchAll(DT)],rows=[];
+  for(let i=0;i+1<dts.length;i+=2){
+    const detect=dts[i],restore=dts[i+1];
+    const head=text.slice(i===0?0:dts[i-1].index+dts[i-1][0].length,detect.index).trim();
+    let id='',name='',event='';const ids=[...head.matchAll(IDRE)];
+    if(ids.length){const l=ids[ids.length-1];id=l[1];const rest=head.slice(l.index+l[0].length).trim().split(' ');name=rest[0]||'';event=rest.slice(1).join(' ');}
+    else{const p=head.split(' ');name=p[0]||'';event=p.slice(1).join(' ');}
+    const tail=text.slice(restore.index+restore[0].length,(i+2<dts.length)?dts[i+2].index:text.length);
+    let kind='',kp=Infinity;for(const k of KINDS){const x=tail.indexOf(k);if(x>=0&&x<kp){kp=x;kind=k;}}
+    rows.push(enrich({region:'',id,name,event,detect:detect[0].replace(/\s+/,' '),restore:restore[0].replace(/\s+/,' '),kind}));
   }
   return rows;
 }
 
-function tagClass(ev){
-  if(ev.includes('정전')) return 't-power';
-  if(/MOV|SSV/i.test(ev)) return 't-mov';
-  return 't-etc';
-}
-function fillSelect(sel, values){
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">전체</option>' +
-    values.map(v=>`<option value="${v}">${v}</option>`).join('');
-  sel.value = cur;
-}
+function tagClass(ev){return ev.includes('정전')?'power':(/MOV|SSV/i.test(ev)?'mov':'etc');}
+function opt(sel,vals,suf=''){const c=sel.value;sel.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option value="${v}">${v}${suf}</option>`).join('');sel.value=c;}
 function buildFilters(){
-  fillSelect($('#f-name'), [...new Set(ROWS.map(r=>r.name))].sort());
-  fillSelect($('#f-event'), [...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
-  fillSelect($('#f-date'), [...new Set(ROWS.map(r=>r.date))].sort());
-  fillSelect($('#f-kind'), [...new Set(ROWS.map(r=>r.kind))].filter(Boolean).sort());
+  opt($('#f-region'),[...new Set(ROWS.map(r=>r.region))].filter(Boolean).sort());
+  opt($('#f-name'),[...new Set(ROWS.map(r=>r.name))].sort());
+  opt($('#f-event'),[...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
+  opt($('#f-date'),[...new Set(ROWS.map(r=>r.date))].sort());
+  opt($('#f-kind'),[...new Set(ROWS.map(r=>r.kind))].filter(Boolean).sort());
+  opt($('#f-sh'),[...new Set(ROWS.map(r=>r.sh))].filter(Boolean).sort(),'시');
+  opt($('#f-eh'),[...new Set(ROWS.map(r=>r.eh))].filter(Boolean).sort(),'시');
 }
 function filtered(){
-  const n=$('#f-name').value, e=$('#f-event').value, d=$('#f-date').value, k=$('#f-kind').value;
-  return ROWS.filter(r=>
-    (!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)&&(!k||r.kind===k));
+  const rg=$('#f-region').value,n=$('#f-name').value,e=$('#f-event').value,d=$('#f-date').value,
+        k=$('#f-kind').value,sh=$('#f-sh').value,eh=$('#f-eh').value;
+  return ROWS.map((r,idx)=>({r,idx})).filter(({r})=>
+    (!rg||r.region===rg)&&(!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)
+    &&(!k||r.kind===k)&&(!sh||r.sh===sh)&&(!eh||r.eh===eh));
 }
 function render(){
-  const data = filtered();
-  $('#hd-count').textContent = ROWS.length;
-  $('#c-total').textContent = ROWS.length;
-  $('#c-station').textContent = new Set(ROWS.map(r=>r.name)).size;
-  $('#c-mov').textContent = ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
-  $('#c-power').textContent = ROWS.filter(r=>r.event.includes('정전')).length;
-  $('#listCount').textContent = ROWS.length ? `(${data.length}건 표시)` : '';
-  const list = $('#list');
-  if(!data.length){
-    list.innerHTML = `<div class="empty">${ROWS.length?'조건에 맞는 이벤트가 없습니다.':'PDF를 불러오면 이벤트가 표시됩니다.'}</div>`;
-    return;
-  }
-  list.innerHTML = data.map(r=>`
-    <div class="item">
+  const data=filtered();
+  $('#hd-count').textContent=ROWS.length;$('#c-total').textContent=ROWS.length;
+  $('#c-station').textContent=new Set(ROWS.map(r=>r.name)).size;
+  $('#c-mov').textContent=ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent=ROWS.filter(r=>r.event.includes('정전')).length;
+  $('#hd-region').textContent=[...new Set(ROWS.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  $('#listCount').textContent=`${data.length}건`;
+  const list=$('#list');
+  if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
+  list.innerHTML=data.map(({r,idx})=>{const t=tagClass(r.event);return `
+    <div class="item tp-${t}">
       <div class="top">
-        <span class="name">📍 ${r.name}</span>
-        <span class="tag ${tagClass(r.event)}">${r.event||'-'}</span>
+        <span class="name">📍 ${r.name}${r.region?`<small>${r.region}</small>`:''}</span>
+        <span class="tag t-${t}">${r.event||'-'}</span>
       </div>
       <div class="meta">
-        <span>🕐 감지 ${r.detect}</span>
-        ${r.restore?`<span>↩ 복귀 ${r.restore}</span>`:''}
+        <span>🕐 <b>${r.detect.slice(11)}</b> ~ ${r.restore.slice(11)}</span>
+        <span>📅 ${r.date}</span>
         ${r.elapsed?`<span>⏱ ${r.elapsed}</span>`:''}
         ${r.kind?`<span>🏷 ${r.kind}</span>`:''}
       </div>
-    </div>`).join('');
+      <div class="acts">
+        <button class="ed" onclick="openEdit(${idx})">✏️ 수정</button>
+        <button class="del" onclick="delRow(${idx})">🗑 삭제</button>
+      </div>
+    </div>`;}).join('');
 }
+
+// ---- 추가/수정 시트 ----
+function toLocal(s){return s? s.replace(' ','T'):'';}
+function fromLocal(s){return s? s.replace('T',' ').slice(0,19).padEnd(19,':00').slice(0,19):'';}
+function openAdd(){
+  editIdx=-1;$('#sheetTitle').textContent='이벤트 추가';
+  $('#i-region').value=$('#f-region').value||'';
+  $('#i-name').value='';$('#i-event').value='';$('#i-detect').value='';$('#i-restore').value='';$('#i-kind').value='실제';
+  $('#overlay').classList.add('on');
+}
+window.openEdit=function(idx){
+  editIdx=idx;const r=ROWS[idx];$('#sheetTitle').textContent='이벤트 수정';
+  $('#i-region').value=r.region||'';$('#i-name').value=r.name||'';$('#i-event').value=r.event||'';
+  $('#i-detect').value=toLocal(r.detect);$('#i-restore').value=toLocal(r.restore);$('#i-kind').value=r.kind||'실제';
+  $('#overlay').classList.add('on');
+};
+window.delRow=function(idx){
+  if(!confirm('이 이벤트를 삭제할까요?'))return;
+  ROWS.splice(idx,1);save();buildFilters();render();
+};
+function doSave(){
+  const name=$('#i-name').value.trim(),event=$('#i-event').value.trim();
+  const detect=fromLocal($('#i-detect').value),restore=fromLocal($('#i-restore').value);
+  if(!name||!event||!detect||!restore){alert('정압기명·이벤트명·감지/복귀 일시는 필수입니다.');return;}
+  const row=enrich({region:$('#i-region').value.trim(),id:'',name,event,detect,restore,kind:$('#i-kind').value});
+  if(editIdx>=0)ROWS[editIdx]=row; else ROWS.unshift(row);
+  save();buildFilters();render();$('#overlay').classList.remove('on');
+}
+
 async function handleFile(file){
-  $('#spinner').style.display='block';
-  $('#fname').textContent = file.name;
+  $('#spinner').style.display='block';$('#fname').textContent=file.name;
   try{
-    const text = await pdfToText(file);
-    ROWS = parseRows(text);
-    if(!ROWS.length){
-      alert('경보이력 데이터를 찾지 못했습니다.\n\n[추출된 텍스트 일부]\n' + text.slice(0,180));
-    }
-    localStorage.setItem('alarmRows', JSON.stringify(ROWS));
-    localStorage.setItem('alarmFile', file.name);
-    buildFilters(); render();
-  }catch(err){
-    alert('PDF 분석 중 오류: '+err.message);
-  }finally{
-    $('#spinner').style.display='none';
-  }
+    const text=await pdfToText(file);const parsed=parsePDF(text);
+    if(!parsed.length){alert('이 PDF에서 데이터를 읽지 못했습니다.\n(스캔 이미지 PDF일 수 있습니다)\n\n추출: '+(text.slice(0,120)||'(비어 있음)'));$('#fname').textContent='';return;}
+    if(confirm(parsed.length+'건을 찾았습니다.\n확인=기존에 추가 / 취소=현재 목록 교체')){ROWS=ROWS.concat(parsed);}
+    else{ROWS=parsed;}
+    save();buildFilters();render();
+  }catch(err){alert('PDF 분석 오류: '+err.message);}
+  finally{$('#spinner').style.display='none';}
 }
-$('#pdfInput').addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
-['#f-name','#f-event','#f-date','#f-kind'].forEach(s=>$(s).addEventListener('change',render));
-$('#resetBtn').addEventListener('click', ()=>{
-  ['#f-name','#f-event','#f-date','#f-kind'].forEach(s=>$(s).value=''); render();
-});
-try{
-  const saved = JSON.parse(localStorage.getItem('alarmRows')||'[]');
-  if(saved.length){ ROWS=saved; $('#fname').textContent=(localStorage.getItem('alarmFile')||'')+' (저장됨)'; buildFilters(); render(); }
-}catch(e){}
+
+$('#addBtn').onclick=openAdd;
+$('#saveBtn').onclick=doSave;
+$('#cancelBtn').onclick=()=>$('#overlay').classList.remove('on');
+$('#overlay').onclick=e=>{if(e.target===$('#overlay'))$('#overlay').classList.remove('on');};
+$('#pdfInput').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
+['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).addEventListener('change',render));
+$('#resetBtn').onclick=()=>{['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).value='');render();};
+$('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(51건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');load();buildFilters();render();$('#fname').textContent='';}};
+
+load();buildFilters();render();
 </script>
 </body>
 </html>

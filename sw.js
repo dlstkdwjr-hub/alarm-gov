@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alarm-dashboard-v4';
+const CACHE_NAME = 'alarm-dashboard-v6';
 const ASSETS = [
   './index.html',
   './manifest.json',
