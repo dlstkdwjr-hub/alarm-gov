@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6366F1">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>경보이력 현황</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--indigo:#6366F1;--indigo-d:#4F46E5;--bg:#F5F6FA;--card:#fff;--line:#E5E7EB;--txt:#1F2937;--sub:#6B7280;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);padding-bottom:env(safe-area-inset-bottom);}
+.header{background:linear-gradient(135deg,var(--indigo),var(--indigo-d));color:#fff;padding:calc(env(safe-area-inset-top) + 18px) 18px 20px;}
+.header h1{margin:0;font-size:20px;font-weight:700;}
+.header p{margin:6px 0 0;font-size:13px;opacity:.9;}
+.bigcount{margin-top:14px;font-size:15px;}
+.bigcount b{font-size:30px;font-weight:800;margin-right:4px;}
+.wrap{padding:16px;max-width:640px;margin:0 auto;}
+.loadbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--card);border:2px dashed var(--indigo);color:var(--indigo-d);font-size:15px;font-weight:700;padding:16px;border-radius:14px;cursor:pointer;margin-bottom:8px;}
+.loadbtn:active{background:#EEF0FF;}
+.fname{font-size:12px;color:var(--sub);text-align:center;margin-bottom:16px;min-height:16px;}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;}
+.card .ico{font-size:18px;}
+.card .lbl{font-size:12px;color:var(--sub);margin-top:6px;}
+.card .val{font-size:24px;font-weight:800;margin-top:2px;}
+.sec-title{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:6px;}
+.filters{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:18px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+.field select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:14px;color:var(--txt);}
+.resetbtn{width:100%;background:#F3F4F6;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:13px;color:var(--sub);cursor:pointer;margin-top:4px;}
+.resetbtn:active{background:#E5E7EB;}
+.list{display:flex;flex-direction:column;gap:8px;}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.item .top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.item .name{font-weight:700;font-size:15px;}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+.t-power{background:#FEF2F2;color:#DC2626;}
+.t-mov{background:#EFF6FF;color:#2563EB;}
+.t-etc{background:#F3F4F6;color:#6B7280;}
+.item .meta{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.7;}
+.item .meta span{display:inline-block;margin-right:12px;}
+.empty{text-align:center;color:var(--sub);font-size:14px;padding:40px 0;line-height:1.6;}
+.spinner{display:none;text-align:center;color:var(--indigo-d);font-size:14px;padding:20px;}
+input[type=file]{display:none;}
+.foot{text-align:center;color:#9CA3AF;font-size:11px;margin:20px 0 8px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📋 경보이력 현황</h1>
+  <p>지역: 경주 · 2026년 업무외 이벤트</p>
+  <div class="bigcount"><b id="hd-count">-</b>건</div>
+</div>
+
+<div class="wrap">
+  <label class="loadbtn">
+    📄 PDF 불러오기
+    <input type="file" id="pdfInput" accept="application/pdf">
+  </label>
+  <div class="fname" id="fname"></div>
+  <div class="spinner" id="spinner">PDF 분석 중…</div>
+
+  <div class="cards">
+    <div class="card"><div class="ico">📊</div><div class="lbl">총 이벤트</div><div class="val" id="c-total">-</div></div>
+    <div class="card"><div class="ico">📍</div><div class="lbl">관련 정압기</div><div class="val" id="c-station">-</div></div>
+    <div class="card"><div class="ico">🔧</div><div class="lbl">MOV/SSV</div><div class="val" id="c-mov">-</div></div>
+    <div class="card"><div class="ico">⚡</div><div class="lbl">정전</div><div class="val" id="c-power">-</div></div>
+  </div>
+
+  <div class="filters">
+    <div class="sec-title">🔍 필터</div>
+    <div class="frow">
+      <div class="field"><label>정압기명</label><select id="f-name"><option value="">전체</option></select></div>
+      <div class="field"><label>이벤트명</label><select id="f-event"><option value="">전체</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>날짜</label><select id="f-date"><option value="">전체</option></select></div>
+      <div class="field"><label>점검구분</label><select id="f-kind"><option value="">전체</option></select></div>
+    </div>
+    <button class="resetbtn" id="resetBtn">↺ 필터 초기화</button>
+  </div>
+
+  <div class="sec-title">📑 이벤트 목록 <span id="listCount" style="color:var(--sub);font-weight:400;"></span></div>
+  <div class="list" id="list"><div class="empty">상단의 <b>PDF 불러오기</b>로<br>경보이력 PDF를 선택하세요.</div></div>
+
+  <div class="foot">폰 안에서 직접 PDF를 분석합니다<br>서버 전송 없음 · 오프라인 지원</div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+let ROWS = [];
+const $ = s => document.querySelector(s);
+const DT = /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g;
+const ELAPSED = /\b\d{2}:\d{2}:\d{2}\b/;
+const KINDS = ['실제','일상점검','오작동','정기점검','점검'];
+
+async function pdfToLines(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let lines = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const byY = {};
+    tc.items.forEach(it=>{
+      if(!it.str.trim()) return;
+      const y = Math.round(it.transform[5]);
+      const key = Object.keys(byY).find(k=>Math.abs(k-y)<=3) || y;
+      (byY[key]=byY[key]||[]).push({x:it.transform[4], s:it.str});
+    });
+    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const line = byY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ')
+                   .replace(/\s+/g,' ').trim();
+      if(line) lines.push(line);
+    });
+  }
+  return lines;
+}
+
+function parseRows(lines){
+  const rows = [];
+  for(const line of lines){
+    if(!/^\d+\s/.test(line)) continue;
+    const matches = [...line.matchAll(DT)];
+    if(!matches.length) continue;
+    const detect = matches[0][0];
+    const restore = matches.length>1 ? matches[1][0] : '';
+    const head = line.slice(0, matches[0].index).trim().split(' ');
+    const id = head[0];
+    const name = head[1] || '';
+    const event = head.slice(2).join(' ').trim();
+    // 경과시간: 마지막 datetime이 끝나는 인덱스 뒤에서만 탐색
+    const last = matches[matches.length-1];
+    const tail = line.slice(last.index + last[0].length);
+    const em = tail.match(ELAPSED);
+    const elapsed = em ? em[0] : '';
+    const kind = KINDS.find(k=> line.includes(k)) || '';
+    rows.push({id,name,event,detect,restore,elapsed,kind,
+               date:detect.slice(0,10), time:detect.slice(11,19)});
+  }
+  return rows;
+}
+
+function tagClass(ev){
+  if(ev.includes('정전')) return 't-power';
+  if(/MOV|SSV/i.test(ev)) return 't-mov';
+  return 't-etc';
+}
+function fillSelect(sel, values){
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체</option>' +
+    values.map(v=>`<option value="${v}">${v}</option>`).join('');
+  sel.value = cur;
+}
+function buildFilters(){
+  fillSelect($('#f-name'), [...new Set(ROWS.map(r=>r.name))].sort());
+  fillSelect($('#f-event'), [...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
+  fillSelect($('#f-date'), [...new Set(ROWS.map(r=>r.date))].sort());
+  fillSelect($('#f-kind'), [...new Set(ROWS.map(r=>r.kind))].filter(Boolean).sort());
+}
+function filtered(){
+  const n=$('#f-name').value, e=$('#f-event').value, d=$('#f-date').value, k=$('#f-kind').value;
+  return ROWS.filter(r=>
+    (!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)&&(!k||r.kind===k));
+}
+function render(){
+  const data = filtered();
+  $('#hd-count').textContent = ROWS.length;
+  $('#c-total').textContent = ROWS.length;
+  $('#c-station').textContent = new Set(ROWS.map(r=>r.name)).size;
+  $('#c-mov').textContent = ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent = ROWS.filter(r=>r.event.includes('정전')).length;
+  $('#listCount').textContent = ROWS.length ? `(${data.length}건 표시)` : '';
+  const list = $('#list');
+  if(!data.length){
+    list.innerHTML = `<div class="empty">${ROWS.length?'조건에 맞는 이벤트가 없습니다.':'PDF를 불러오면 이벤트가 표시됩니다.'}</div>`;
+    return;
+  }
+  list.innerHTML = data.map(r=>`
+    <div class="item">
+      <div class="top">
+        <span class="name">📍 ${r.name}</span>
+        <span class="tag ${tagClass(r.event)}">${r.event||'-'}</span>
+      </div>
+      <div class="meta">
+        <span>🕐 감지 ${r.detect}</span>
+        ${r.restore?`<span>↩ 복귀 ${r.restore}</span>`:''}
+        ${r.elapsed?`<span>⏱ ${r.elapsed}</span>`:''}
+        ${r.kind?`<span>🏷 ${r.kind}</span>`:''}
+      </div>
+    </div>`).join('');
+}
+async function handleFile(file){
+  $('#spinner').style.display='block';
+  $('#fname').textContent = file.name;
+  try{
+    const lines = await pdfToLines(file);
+    ROWS = parseRows(lines);
+    if(!ROWS.length){ alert('PDF에서 경보이력 데이터를 찾지 못했습니다. 형식을 확인해주세요.'); }
+    localStorage.setItem('alarmRows', JSON.stringify(ROWS));
+    localStorage.setItem('alarmFile', file.name);
+    buildFilters(); render();
+  }catch(err){
+    alert('PDF 분석 중 오류: '+err.message);
+  }finally{
+    $('#spinner').style.display='none';
+  }
+}
+$('#pdfInput').addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+['#f-name','#f-event','#f-date','#f-kind'].forEach(s=>$(s).addEventListener('change',render));
+$('#resetBtn').addEventListener('click', ()=>{
+  ['#f-name','#f-event','#f-date','#f-kind'].forEach(s=>$(s).value=''); render();
+});
+try{
+  const saved = JSON.parse(localStorage.getItem('alarmRows')||'[]');
+  if(saved.length){ ROWS=saved; $('#fname').textContent=(localStorage.getItem('alarmFile')||'')+' (저장됨)'; buildFilters(); render(); }
+}catch(e){}
+</script>
+</body>
+</html>
