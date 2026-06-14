@@ -206,23 +206,67 @@ function buildFilters(){
   opt($('#f-event'),[...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
   opt($('#f-date'),[...new Set(ROWS.map(r=>r.date))].sort());
   opt($('#f-kind'),[...new Set(ROWS.map(r=>r.kind))].filter(Boolean).sort());
-  opt($('#f-sh'),[...new Set(ROWS.map(r=>r.sh))].filter(Boolean).sort(),'시');
-  opt($('#f-eh'),[...new Set(ROWS.map(r=>r.eh))].filter(Boolean).sort(),'시');
+  const hours=[...Array(24)].map((_,i)=>String(i).padStart(2,'0'));
+  opt($('#f-sh'),hours,'시');
+  opt($('#f-eh'),hours,'시');
+}
+function toMinuteOfDay(str){
+  return Number(str.slice(11,13))*60+Number(str.slice(14,16));
+}
+function eventOverlapsWindow(r,sh,eh){
+  if(!sh&&!eh) return true;
+  const start=(sh||'00')+':00';
+  const end=(eh||'23')+':59';
+  const winStart=Number(start.slice(0,2))*60+Number(start.slice(3,5));
+  const winEnd=Number(end.slice(0,2))*60+Number(end.slice(3,5));
+  const crossesMidnight=winStart>winEnd;
+  const detect=new Date(r.detect.replace(' ','T')).getTime();
+  const restore=new Date(r.restore.replace(' ','T')).getTime();
+  const startMin=toMinuteOfDay(r.detect);
+  const endMin=toMinuteOfDay(r.restore);
+
+  const overlaps=(segStart,segEnd,a,b)=> segStart<=b && a<=segEnd;
+
+  if(crossesMidnight){
+    if(overlaps(startMin, endMin, winStart, 1439)) return true;
+    if(overlaps(startMin, endMin, 0, winEnd)) return true;
+    if(restore>detect){
+      const durationMinutes=(restore-detect)/60000;
+      if(durationMinutes>=1440) return true;
+      if(startMin>endMin){
+        if(overlaps(startMin,1439,winStart,1439)) return true;
+        if(overlaps(0,endMin,0,winEnd)) return true;
+      }
+    }
+    return false;
+  }
+
+  if(overlaps(startMin,endMin,winStart,winEnd)) return true;
+  if(restore>detect){
+    const durationMinutes=(restore-detect)/60000;
+    if(durationMinutes>=1440) return true;
+    if(startMin>endMin){
+      if(overlaps(startMin,1439,winStart,winEnd)) return true;
+      if(overlaps(0,endMin,winStart,winEnd)) return true;
+    }
+  }
+  return false;
 }
 function filtered(){
   const rg=$('#f-region').value,n=$('#f-name').value,e=$('#f-event').value,d=$('#f-date').value,
         k=$('#f-kind').value,sh=$('#f-sh').value,eh=$('#f-eh').value;
   return ROWS.map((r,idx)=>({r,idx})).filter(({r})=>
     (!rg||r.region===rg)&&(!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)
-    &&(!k||r.kind===k)&&(!sh||r.sh===sh)&&(!eh||r.eh===eh));
+    &&(!k||r.kind===k)&&eventOverlapsWindow(r,sh,eh));
 }
 function render(){
   const data=filtered();
-  $('#hd-count').textContent=ROWS.length;$('#c-total').textContent=ROWS.length;
-  $('#c-station').textContent=new Set(ROWS.map(r=>r.name)).size;
-  $('#c-mov').textContent=ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
-  $('#c-power').textContent=ROWS.filter(r=>r.event.includes('정전')).length;
-  $('#hd-region').textContent=[...new Set(ROWS.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  const rows=data.map(x=>x.r);
+  $('#hd-count').textContent=data.length;$('#c-total').textContent=data.length;
+  $('#c-station').textContent=new Set(rows.map(r=>r.name)).size;
+  $('#c-mov').textContent=rows.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent=rows.filter(r=>r.event.includes('정전')).length;
+  $('#hd-region').textContent=[...new Set(rows.map(r=>r.region))].filter(Boolean).join('·')||'전체';
   $('#listCount').textContent=`${data.length}건`;
   const list=$('#list');
   if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
