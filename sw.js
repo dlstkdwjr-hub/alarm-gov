@@ -1,9 +1,10 @@
-const CACHE_NAME = 'alarm-dashboard-v7';
+const CACHE_NAME = 'alarm-dashboard-v8';
 const ASSETS = [
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 ];
