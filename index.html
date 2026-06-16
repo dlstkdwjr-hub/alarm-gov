@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>경보이력 현황</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{--indigo:#4F46E5;--indigo-l:#6366F1;--bg:#F4F5FB;--card:#fff;--line:#ECECF3;--txt:#1E2230;--sub:#8A8FA3;--soft:#F7F8FC;--red:#E04A40;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -65,6 +66,18 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo"
 input[type=file]{display:none;}
 .foot{text-align:center;color:#B5B9C7;font-size:10.5px;margin:22px 0 8px;line-height:1.7;}
 .foot a{color:var(--sub);text-decoration:underline;cursor:pointer;}
+/* tab nav */
+.tabnav{display:flex;gap:0;background:var(--card);border-radius:14px;padding:4px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.06);}
+.tabnav button{flex:1;padding:10px 6px;font-size:13px;font-weight:700;border:none;background:transparent;border-radius:11px;cursor:pointer;color:var(--sub);transition:.15s;letter-spacing:-.2px;}
+.tabnav button.active{background:var(--indigo);color:#fff;box-shadow:0 3px 10px rgba(79,70,229,.25);}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+/* charts */
+.chart-panel{background:var(--card);border-radius:16px;padding:18px 16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
+.chart-panel canvas{max-height:240px;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.chart-row .chart-panel{margin-bottom:0;}
+.chart-row .chart-panel canvas{max-height:200px;}
+.chart-empty{text-align:center;color:var(--sub);font-size:13px;padding:30px 0;}
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(20,22,35,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
 .overlay.on{display:flex;}
@@ -85,6 +98,14 @@ input[type=file]{display:none;}
 </div>
 
 <div class="wrap">
+  <!-- 탭 네비게이션 -->
+  <div class="tabnav" style="margin-top:18px;">
+    <button class="active" onclick="switchTab('list')">📑 목록</button>
+    <button onclick="switchTab('chart')">📊 통계</button>
+  </div>
+
+  <!-- 목록 탭 -->
+  <div class="tab-panel active" id="tab-list">
   <div class="btnrow">
     <button class="btn primary" id="addBtn">＋ 이벤트 추가</button>
     <label class="btn ghost">📄 PDF 불러오기<input type="file" id="pdfInput" accept="application/pdf"></label>
@@ -127,6 +148,38 @@ input[type=file]{display:none;}
 
   <div class="foot">내장 데이터 51건 · 오프라인 지원 · 휴대폰 안에서만 동작<br>
     <a id="restoreBtn">기본(원본) 데이터로 초기화</a></div>
+  </div><!-- /tab-list -->
+
+  <!-- 통계 탭 -->
+  <div class="tab-panel" id="tab-chart">
+    <!-- 이벤트 유형 파이 + 정압기 순위 -->
+    <div class="chart-row">
+      <div class="chart-panel">
+        <div class="sec-title" style="font-size:12.5px;">🍩 이벤트 유형</div>
+        <canvas id="chart-pie"></canvas>
+      </div>
+      <div class="chart-panel">
+        <div class="sec-title" style="font-size:12.5px;">🏆 설비 순위</div>
+        <canvas id="chart-rank"></canvas>
+      </div>
+    </div>
+    <!-- 시간대별 빈도 -->
+    <div class="chart-panel">
+      <div class="sec-title">🕐 시간대별 경보 빈도</div>
+      <canvas id="chart-hour"></canvas>
+    </div>
+    <!-- 월별 빈도 -->
+    <div class="chart-panel">
+      <div class="sec-title">📅 월별 경보 추이</div>
+      <canvas id="chart-month"></canvas>
+    </div>
+    <!-- 요일별 빈도 -->
+    <div class="chart-panel">
+      <div class="sec-title">📆 요일별 경보 빈도</div>
+      <canvas id="chart-dow"></canvas>
+    </div>
+  </div><!-- /tab-chart -->
+
 </div>
 
 <!-- 입력/수정 시트 -->
@@ -206,67 +259,23 @@ function buildFilters(){
   opt($('#f-event'),[...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
   opt($('#f-date'),[...new Set(ROWS.map(r=>r.date))].sort());
   opt($('#f-kind'),[...new Set(ROWS.map(r=>r.kind))].filter(Boolean).sort());
-  const hours=[...Array(24)].map((_,i)=>String(i).padStart(2,'0'));
-  opt($('#f-sh'),hours,'시');
-  opt($('#f-eh'),hours,'시');
-}
-function toMinuteOfDay(str){
-  return Number(str.slice(11,13))*60+Number(str.slice(14,16));
-}
-function eventOverlapsWindow(r,sh,eh){
-  if(!sh&&!eh) return true;
-  const start=(sh||'00')+':00';
-  const end=(eh||'23')+':59';
-  const winStart=Number(start.slice(0,2))*60+Number(start.slice(3,5));
-  const winEnd=Number(end.slice(0,2))*60+Number(end.slice(3,5));
-  const crossesMidnight=winStart>winEnd;
-  const detect=new Date(r.detect.replace(' ','T')).getTime();
-  const restore=new Date(r.restore.replace(' ','T')).getTime();
-  const startMin=toMinuteOfDay(r.detect);
-  const endMin=toMinuteOfDay(r.restore);
-
-  const overlaps=(segStart,segEnd,a,b)=> segStart<=b && a<=segEnd;
-
-  if(crossesMidnight){
-    if(overlaps(startMin, endMin, winStart, 1439)) return true;
-    if(overlaps(startMin, endMin, 0, winEnd)) return true;
-    if(restore>detect){
-      const durationMinutes=(restore-detect)/60000;
-      if(durationMinutes>=1440) return true;
-      if(startMin>endMin){
-        if(overlaps(startMin,1439,winStart,1439)) return true;
-        if(overlaps(0,endMin,0,winEnd)) return true;
-      }
-    }
-    return false;
-  }
-
-  if(overlaps(startMin,endMin,winStart,winEnd)) return true;
-  if(restore>detect){
-    const durationMinutes=(restore-detect)/60000;
-    if(durationMinutes>=1440) return true;
-    if(startMin>endMin){
-      if(overlaps(startMin,1439,winStart,winEnd)) return true;
-      if(overlaps(0,endMin,winStart,winEnd)) return true;
-    }
-  }
-  return false;
+  opt($('#f-sh'),[...new Set(ROWS.map(r=>r.sh))].filter(Boolean).sort(),'시');
+  opt($('#f-eh'),[...new Set(ROWS.map(r=>r.eh))].filter(Boolean).sort(),'시');
 }
 function filtered(){
   const rg=$('#f-region').value,n=$('#f-name').value,e=$('#f-event').value,d=$('#f-date').value,
         k=$('#f-kind').value,sh=$('#f-sh').value,eh=$('#f-eh').value;
   return ROWS.map((r,idx)=>({r,idx})).filter(({r})=>
     (!rg||r.region===rg)&&(!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)
-    &&(!k||r.kind===k)&&eventOverlapsWindow(r,sh,eh));
+    &&(!k||r.kind===k)&&(!sh||r.sh===sh)&&(!eh||r.eh===eh));
 }
 function render(){
   const data=filtered();
-  const rows=data.map(x=>x.r);
-  $('#hd-count').textContent=data.length;$('#c-total').textContent=data.length;
-  $('#c-station').textContent=new Set(rows.map(r=>r.name)).size;
-  $('#c-mov').textContent=rows.filter(r=>/MOV|SSV/i.test(r.event)).length;
-  $('#c-power').textContent=rows.filter(r=>r.event.includes('정전')).length;
-  $('#hd-region').textContent=[...new Set(rows.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  $('#hd-count').textContent=ROWS.length;$('#c-total').textContent=ROWS.length;
+  $('#c-station').textContent=new Set(ROWS.map(r=>r.name)).size;
+  $('#c-mov').textContent=ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent=ROWS.filter(r=>r.event.includes('정전')).length;
+  $('#hd-region').textContent=[...new Set(ROWS.map(r=>r.region))].filter(Boolean).join('·')||'전체';
   $('#listCount').textContent=`${data.length}건`;
   const list=$('#list');
   if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
@@ -334,11 +343,170 @@ $('#saveBtn').onclick=doSave;
 $('#cancelBtn').onclick=()=>$('#overlay').classList.remove('on');
 $('#overlay').onclick=e=>{if(e.target===$('#overlay'))$('#overlay').classList.remove('on');};
 $('#pdfInput').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
-['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).addEventListener('change',render));
-$('#resetBtn').onclick=()=>{['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).value='');render();};
+['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).addEventListener('change',()=>{render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();}));
+$('#resetBtn').onclick=()=>{['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).value='');render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();};
 $('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(51건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');load();buildFilters();render();$('#fname').textContent='';}};
 
 load();buildFilters();render();
+
+// ---- 탭 전환 ----
+const CHARTS = {};
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabnav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`.tabnav button[onclick="switchTab('${name}')"]`).classList.add('active');
+  if(name==='chart') renderCharts();
+}
+
+// ---- 차트 렌더링 ----
+const PALETTE = ['#4F46E5','#E04A40','#2F6FE0','#16A34A','#D97706','#7C3AED','#0891B2','#BE185D','#6B7280'];
+const DOW_KR = ['일','월','화','수','목','금','토'];
+
+function destroyChart(id){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}}
+
+function renderCharts(){
+  const data = filtered().map(d=>d.r);
+  if(!data.length){
+    ['pie','rank','hour','month','dow'].forEach(id=>{
+      destroyChart(id);
+      const el=document.getElementById('chart-'+id);
+      if(el) el.parentElement.innerHTML='<div class="sec-title" style="font-size:12.5px;">데이터 없음</div><div class="chart-empty">조건에 맞는 데이터가 없습니다</div>';
+    });
+    return;
+  }
+
+  // 1. 이벤트 유형 파이차트
+  {
+    const counts={};
+    data.forEach(r=>{
+      let cat;
+      if(r.event.includes('정전')) cat='정전';
+      else if(/MOV|SSV/i.test(r.event)) cat='MOV/SSV';
+      else if(r.event.includes('가스누출')) cat='가스누출';
+      else if(r.event.includes('통신이상')) cat='통신이상';
+      else if(r.event.includes('RTU 외함')) cat='RTU 외함';
+      else if(r.event.includes('정압실문')) cat='정압실문';
+      else cat='기타';
+      counts[cat]=(counts[cat]||0)+1;
+    });
+    const labels=Object.keys(counts), vals=Object.values(counts);
+    destroyChart('pie');
+    const el=document.getElementById('chart-pie');
+    if(el) CHARTS['pie']=new Chart(el,{
+      type:'doughnut',
+      data:{labels,datasets:[{data:vals,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:11,padding:6}}},cutout:'58%'}
+    });
+  }
+
+  // 2. 정압기별 순위 (상위 8)
+  {
+    const counts={};
+    data.forEach(r=>{ counts[r.name]=(counts[r.name]||0)+1; });
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    destroyChart('rank');
+    const el=document.getElementById('chart-rank');
+    if(el) CHARTS['rank']=new Chart(el,{
+      type:'bar',
+      data:{
+        labels:sorted.map(([n])=>n),
+        datasets:[{data:sorted.map(([,v])=>v),backgroundColor:sorted.map((_,i)=>i===0?'#E04A40CC':PALETTE[0]+'AA'),borderRadius:5,borderSkipped:false}]
+      },
+      options:{
+        indexAxis:'y',responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x}건`}}},
+        scales:{
+          x:{grid:{color:'#F0F0F5'},ticks:{font:{size:9},stepSize:1}},
+          y:{grid:{display:false},ticks:{font:{size:10}}}
+        }
+      }
+    });
+  }
+
+  // 3. 시간대별 빈도
+  {
+    const hrs=Array(24).fill(0);
+    data.forEach(r=>{ const h=parseInt(r.sh,10); if(!isNaN(h))hrs[h]++; });
+    destroyChart('hour');
+    const el=document.getElementById('chart-hour');
+    if(el) CHARTS['hour']=new Chart(el,{
+      type:'bar',
+      data:{
+        labels:Array.from({length:24},(_,i)=>i+'시'),
+        datasets:[{data:hrs,backgroundColor:hrs.map((_,i)=>{
+          if(i>=22||i<6) return '#7C3AED99';
+          if(i>=6&&i<9) return '#E0474099';
+          return PALETTE[0]+'99';
+        }),borderRadius:4,borderSkipped:false}]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}건`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0}},
+          y:{grid:{color:'#F0F0F5'},ticks:{font:{size:10},stepSize:1}}
+        }
+      }
+    });
+  }
+
+  // 4. 월별 추이
+  {
+    const mMap={};
+    data.forEach(r=>{
+      const m=r.date.slice(0,7);
+      mMap[m]=(mMap[m]||0)+1;
+    });
+    const months=Object.keys(mMap).sort();
+    destroyChart('month');
+    const el=document.getElementById('chart-month');
+    if(el) CHARTS['month']=new Chart(el,{
+      type:'line',
+      data:{
+        labels:months.map(m=>m.replace('-','년 ')+'월'),
+        datasets:[{data:months.map(m=>mMap[m]),borderColor:PALETTE[0],backgroundColor:PALETTE[0]+'22',
+          fill:true,tension:.35,pointBackgroundColor:PALETTE[0],pointRadius:4,pointHoverRadius:6,borderWidth:2}]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}건`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
+          y:{grid:{color:'#F0F0F5'},ticks:{font:{size:10},stepSize:1}}
+        }
+      }
+    });
+  }
+
+  // 5. 요일별 빈도
+  {
+    const dows=Array(7).fill(0);
+    data.forEach(r=>{
+      const d=new Date(r.date+'T00:00:00');
+      if(!isNaN(d)) dows[d.getDay()]++;
+    });
+    destroyChart('dow');
+    const el=document.getElementById('chart-dow');
+    if(el) CHARTS['dow']=new Chart(el,{
+      type:'bar',
+      data:{
+        labels:DOW_KR,
+        datasets:[{data:dows,
+          backgroundColor:dows.map((_,i)=>(i===0||i===6)?'#E04A4099':PALETTE[0]+'99'),
+          borderRadius:6,borderSkipped:false}]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}건`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:12}}},
+          y:{grid:{color:'#F0F0F5'},ticks:{font:{size:10},stepSize:1}}
+        }
+      }
+    });
+  }
+}
 </script>
 </body>
 </html>
