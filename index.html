@@ -270,21 +270,32 @@ function filtered(){
     &&(!k||r.kind===k)&&(!sh||r.sh===sh)&&(!eh||r.eh===eh));
 }
 function render(){
-  const data = filtered();
-  const rows = data.map(d => d.r);
-
-  document.querySelector('#hd-count').textContent = rows.length;
-  document.querySelector('#c-total').textContent = rows.length;
-  document.querySelector('#c-station').textContent = new Set(rows.map(r=>r.name)).size;
-  document.querySelector('#c-mov').textContent = rows.filter(r=>/MOV|SSV/i.test(r.event)).length;
-  document.querySelector('#c-power').textContent = rows.filter(r=>r.event.includes('정전')).length;
-
-  document.querySelector('#hd-region').textContent =
-    [...new Set(rows.map(r=>r.region))].filter(Boolean).join('·') || '전체';
-
-  document.querySelector('#listCount').textContent = `${data.length}건`;
-
-  renderTable(data);
+  const data=filtered();
+  $('#hd-count').textContent=ROWS.length;$('#c-total').textContent=ROWS.length;
+  $('#c-station').textContent=new Set(ROWS.map(r=>r.name)).size;
+  $('#c-mov').textContent=ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent=ROWS.filter(r=>r.event.includes('정전')).length;
+  $('#hd-region').textContent=[...new Set(ROWS.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  $('#listCount').textContent=`${data.length}건`;
+  const list=$('#list');
+  if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
+  list.innerHTML=data.map(({r,idx})=>{const t=tagClass(r.event);return `
+    <div class="item tp-${t}">
+      <div class="top">
+        <span class="name">📍 ${r.name}${r.region?`<small>${r.region}</small>`:''}</span>
+        <span class="tag t-${t}">${r.event||'-'}</span>
+      </div>
+      <div class="meta">
+        <span>🕐 <b>${r.detect.slice(11)}</b> ~ ${r.restore.slice(11)}</span>
+        <span>📅 ${r.date}</span>
+        ${r.elapsed?`<span>⏱ ${r.elapsed}</span>`:''}
+        ${r.kind?`<span>🏷 ${r.kind}</span>`:''}
+      </div>
+      <div class="acts">
+        <button class="ed" onclick="openEdit(${idx})">✏️ 수정</button>
+        <button class="del" onclick="delRow(${idx})">🗑 삭제</button>
+      </div>
+    </div>`;}).join('');
 }
 
 // ---- 추가/수정 시트 ----
