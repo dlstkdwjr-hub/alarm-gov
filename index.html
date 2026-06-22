@@ -265,9 +265,23 @@ function buildFilters(){
 function filtered(){
   const rg=$('#f-region').value,n=$('#f-name').value,e=$('#f-event').value,d=$('#f-date').value,
         k=$('#f-kind').value,sh=$('#f-sh').value,eh=$('#f-eh').value;
-  return ROWS.map((r,idx)=>({r,idx})).filter(({r})=>
-    (!rg||r.region===rg)&&(!n||r.name===n)&&(!e||r.event===e)&&(!d||r.date===d)
-    &&(!k||r.kind===k)&&(!sh||r.sh===sh)&&(!eh||r.eh===eh));
+  return ROWS.map((r,idx)=>({r,idx})).filter(({r})=>{
+    if(rg&&r.region!==rg)return false;
+    if(n&&r.name!==n)return false;
+    if(e&&r.event!==e)return false;
+    if(d&&r.date!==d)return false;
+    if(k&&r.kind!==k)return false;
+    if(sh||eh){
+      const s=parseInt(r.sh,10),en=parseInt(r.eh,10);
+      if(sh&&eh){
+        const sv=parseInt(sh,10),ev=parseInt(eh,10);
+        if(sv<=ev){ if(!(s>=sv&&en<=ev))return false; }
+        else { if(!(s>=sv||en<=ev))return false; }
+      } else if(sh){ if(s<parseInt(sh,10))return false; }
+      else if(eh){ if(en>parseInt(eh,10))return false; }
+    }
+    return true;
+  });
 }
 function render(){
   const data=filtered();
