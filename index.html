@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>경보이력 현황</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{--indigo:#4F46E5;--indigo-l:#6366F1;--bg:#F4F5FB;--card:#fff;--line:#ECECF3;--txt:#1E2230;--sub:#8A8FA3;--soft:#F7F8FC;--red:#E04A40;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -366,6 +366,13 @@ const DOW_KR = ['일','월','화','수','목','금','토'];
 function destroyChart(id){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}}
 
 function renderCharts(){
+  if(typeof Chart==='undefined'){
+    ['pie','rank','hour','month','dow'].forEach(id=>{
+      const el=document.getElementById('chart-'+id);
+      if(el) el.parentElement.innerHTML='<div class="sec-title" style="font-size:12.5px;">차트 로드 실패</div><div class="chart-empty">인터넷 연결이 필요합니다.<br>(차트 라이브러리를 불러오지 못함)</div>';
+    });
+    return;
+  }
   const data = filtered().map(d=>d.r);
   if(!data.length){
     ['pie','rank','hour','month','dow'].forEach(id=>{
