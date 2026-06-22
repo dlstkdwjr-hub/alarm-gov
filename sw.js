@@ -1,4 +1,5 @@
-const CACHE_NAME = 'alarm-dashboard-v8';
+const CACHE_NAME = 'alarm-dashboard-v9';
+
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -9,6 +10,7 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 ];
 
+// install
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
@@ -18,6 +20,7 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
+// activate
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -27,9 +30,25 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// 캐시 우선 -> 없으면 네트워크 (오프라인 우선)
+// 🔥 핵심: HTML만 네트워크 우선
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  // 👉 index.html 항상 최신
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // 👉 나머지는 캐시 우선
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetchPromise = fetch(e.request).then(res => {
@@ -39,7 +58,10 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }).catch(() => cached);
+
       return cached || fetchPromise;
     })
+  );
+});
   );
 });
