@@ -271,12 +271,13 @@ function filtered(){
 }
 function render(){
   const data=filtered();
-  $('#hd-count').textContent=ROWS.length;$('#c-total').textContent=ROWS.length;
-  $('#c-station').textContent=new Set(ROWS.map(r=>r.name)).size;
-  $('#c-mov').textContent=ROWS.filter(r=>/MOV|SSV/i.test(r.event)).length;
-  $('#c-power').textContent=ROWS.filter(r=>r.event.includes('정전')).length;
-  $('#hd-region').textContent=[...new Set(ROWS.map(r=>r.region))].filter(Boolean).join('·')||'전체';
-  $('#listCount').textContent=`${data.length}건`;
+  const fRows=data.map(d=>d.r);
+  $('#hd-count').textContent=fRows.length;$('#c-total').textContent=fRows.length;
+  $('#c-station').textContent=new Set(fRows.map(r=>r.name)).size;
+  $('#c-mov').textContent=fRows.filter(r=>/MOV|SSV/i.test(r.event)).length;
+  $('#c-power').textContent=fRows.filter(r=>r.event.includes('정전')).length;
+  $('#hd-region').textContent=[...new Set(fRows.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  $('#listCount').textContent=`${fRows.length}건`;
   const list=$('#list');
   if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
   list.innerHTML=data.map(({r,idx})=>{const t=tagClass(r.event);return `
