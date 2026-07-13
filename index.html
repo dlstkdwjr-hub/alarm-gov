@@ -99,6 +99,20 @@ input[type=file]{display:none;}
 .chart-row .chart-panel canvas{max-height:200px;}
 .chart-empty{text-align:center;color:var(--sub);font-size:13px;padding:30px 0;}
 
+
+/* 관리자 탭 */
+.admin-panel{background:var(--card);border-radius:16px;padding:24px 18px;box-shadow:0 2px 10px rgba(30,34,48,.06);}
+.admin-panel h3{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px;}
+.admin-panel p{font-size:12.5px;color:var(--sub);margin-bottom:18px;}
+.pw-row{display:flex;gap:8px;align-items:center;}
+.pw-row input{flex:1;padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;letter-spacing:4px;outline:none;background:var(--soft);}
+.pw-row input:focus{border-color:var(--indigo);}
+.pw-row button{padding:11px 18px;background:var(--indigo);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;}
+.admin-status{margin-top:14px;padding:12px 15px;border-radius:11px;font-size:13px;font-weight:600;display:none;}
+.admin-status.ok{background:#DCFCE7;color:#16A34A;display:block;}
+.admin-status.fail{background:#FEE2E2;color:#DC2626;display:block;}
+.admin-badge{display:inline-block;background:#16A34A;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+
 /* 동기화 상태 */
 .sync-bar{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--sub);background:var(--card);border-radius:11px;padding:8px 13px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,34,48,.04);}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:#B8BDCC;flex-shrink:0;}
@@ -129,12 +143,13 @@ input[type=file]{display:none;}
   <div class="tabnav" style="margin-top:18px;">
     <button class="active" onclick="switchTab('list')">📑 목록</button>
     <button onclick="switchTab('chart')">📊 통계</button>
+    <button onclick="switchTab('admin')" id="adminTabBtn">🔐 관리자</button>
   </div>
 
   <!-- 목록 탭 -->
   <div class="tab-panel active" id="tab-list">
   <div class="sync-bar" id="syncBar"><div class="sync-dot ing" id="syncDot"></div><span id="syncMsg">Firebase 연결 중…</span></div>
-  <div class="btnrow">
+  <div class="btnrow" id="adminBtnRow" style="display:none;">
     <button class="btn primary" id="addBtn">＋ 이벤트 추가</button>
     <label class="btn ghost">📄 PDF 불러오기<input type="file" id="pdfInput" accept="application/pdf"></label>
   </div>
@@ -207,6 +222,19 @@ input[type=file]{display:none;}
       <canvas id="chart-dow"></canvas>
     </div>
   </div><!-- /tab-chart -->
+  <!-- 관리자 탭 -->
+  <div class="tab-panel" id="tab-admin">
+    <div class="admin-panel">
+      <h3>🔐 관리자 인증</h3>
+      <p>비밀번호를 입력하면 이벤트 추가·수정·삭제 권한이 활성화됩니다.</p>
+      <div class="pw-row">
+        <input type="password" id="pwInput" placeholder="비밀번호" maxlength="20" onkeydown="if(event.key==='Enter')checkPw()">
+        <button onclick="checkPw()">확인</button>
+      </div>
+      <div class="admin-status" id="adminStatus"></div>
+    </div>
+  </div><!-- /tab-admin -->
+
 
 </div>
 
@@ -406,10 +434,10 @@ function render(){
         ${r.elapsed?`<span>⏱ ${r.elapsed}</span>`:''}
         ${r.kind?`<span>🏷 ${r.kind}</span>`:''}
       </div>
-      <div class="acts">
+      ${window.IS_ADMIN ? `<div class="acts">
         <button class="ed" onclick="openEdit(${idx})">✏️ 수정</button>
         <button class="del" onclick="delRow(${idx})">🗑 삭제</button>
-      </div>
+      </div>` : ''}
     </div>`;}).join('');
 }
 
@@ -468,7 +496,30 @@ $('#overlay').onclick=e=>{if(e.target===$('#overlay'))$('#overlay').classList.re
 $('#pdfInput').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
 ['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).addEventListener('change',()=>{render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();}));
 $('#resetBtn').onclick=()=>{['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).value='');render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();};
-$('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(77건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');load();buildFilters();render();$('#fname').textContent='';}};
+$('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(77건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');
+// ---- 관리자 권한 ----
+window.IS_ADMIN = false;
+const ADMIN_PW = '1002';
+
+window.checkPw = function checkPw(){
+  const v = document.getElementById('pwInput').value;
+  const st = document.getElementById('adminStatus');
+  const btn = document.getElementById('adminTabBtn');
+  if(v === ADMIN_PW){
+    window.IS_ADMIN = true;
+    st.className = 'admin-status ok';
+    st.textContent = '✅ 관리자 권한이 활성화되었습니다.';
+    btn.innerHTML = '🔓 관리자<span class="admin-badge">ON</span>';
+    document.getElementById('adminBtnRow').style.display = 'grid';
+    render();
+  } else {
+    st.className = 'admin-status fail';
+    st.textContent = '❌ 비밀번호가 올바르지 않습니다.';
+    document.getElementById('pwInput').value = '';
+  }
+}
+
+load();buildFilters();render();$('#fname').textContent='';}};
 
 load();buildFilters();render();
 
