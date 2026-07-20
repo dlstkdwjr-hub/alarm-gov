@@ -1,67 +1,47 @@
-const CACHE_NAME = 'alarm-dashboard-v9';
+const CACHE_VERSION = '20260720130451';
+const CACHE_NAME = `alarm-cache-${CACHE_VERSION}`;
 
-const ASSETS = [
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-];
-
-// install
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      Promise.allSettled(ASSETS.map(u => cache.add(u)))
-    )
-  );
+self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// activate
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// 🔥 핵심: HTML만 네트워크 우선
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+self.addEventListener('message', event => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
 
-  // 👉 index.html 항상 최신
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-          return res;
+self.addEventListener('fetch', event => {
+  const req = event.request;
+
+  // HTML 문서: 네트워크 우선 (항상 최신 데이터 확인), 실패 시에만 캐시 사용
+  if (req.mode === 'navigate' || req.destination === 'document') {
+    event.respondWith(
+      fetch(req, { cache: 'no-store' })
+        .then(resp => {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
+          return resp;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(req))
     );
     return;
   }
 
-  // 👉 나머지는 캐시 우선
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(res => {
-        if (res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
-        return res;
+  // 그 외 리소스(js, css, 아이콘 등): stale-while-revalidate
+  event.respondWith(
+    caches.match(req).then(cached => {
+      const network = fetch(req).then(resp => {
+        caches.open(CACHE_NAME).then(cache => cache.put(req, resp.clone()));
+        return resp;
       }).catch(() => cached);
-
-      return cached || fetchPromise;
+      return cached || network;
     })
-  );
-});
   );
 });
