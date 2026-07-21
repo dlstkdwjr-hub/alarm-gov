@@ -281,9 +281,14 @@ function load(){
     window.addEventListener('fb-ready',()=>load(),{once:true});
   }
 }
+let _uploading = false;
 async function uploadEmbedded(){
-  if(!window._fb)return;
-  const {db,collection,addDoc,COL}=window._fb;
+  if(!window._fb||_uploading)return;
+  _uploading=true;
+  const {db,collection,getDocs,addDoc,COL}=window._fb;
+  // 업로드 전 다시 한번 확인 (동시 접속 방지)
+  const check=await getDocs(collection(db,COL));
+  if(!check.empty){_uploading=false;return;}
   setSyncStatus('ing','내장 데이터 업로드 중…');
   try{
     for(const r of EMBEDDED){
@@ -292,6 +297,7 @@ async function uploadEmbedded(){
     }
     setSyncStatus('ok','Firebase 실시간 동기화 중');
   }catch(e){setSyncStatus('err','업로드 실패: '+e.message);}
+  _uploading=false;
 }
 async function save(){
   // ROWS 전체를 Firebase에 동기화 (추가/수정/삭제 모두)
