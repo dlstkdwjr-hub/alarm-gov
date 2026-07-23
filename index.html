@@ -8,10 +8,11 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>경보이력 현황</title>
+<title>정압기 통합관리</title>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, setDoc, deleteDoc, doc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDDrVu7MReoLJM3wN8qduYREJJiMPsXYPg",
   authDomain: "alarm-gov.firebaseapp.com",
@@ -23,6 +24,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const COL = 'alarmRows';
+
 // Firestore -> window 브릿지
 window._fb = { db, collection, getDocs, addDoc, setDoc, deleteDoc, doc, onSnapshot, writeBatch, COL };
 window.dispatchEvent(new Event('fb-ready'));
@@ -30,114 +32,212 @@ window.dispatchEvent(new Event('fb-ready'));
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--indigo:#4F46E5;--indigo-l:#6366F1;--bg:#F4F5FB;--card:#fff;--line:#ECECF3;--txt:#1E2230;--sub:#8A8FA3;--soft:#F7F8FC;--red:#E04A40;}
+:root{
+  --bg:#F0F3F8;
+  --card:#FFFFFF;
+  --border:#E2E8F2;
+  --txt:#0F1724;
+  --sub:#5A6478;
+  --muted:#96A0B4;
+  --navy:#0F2D5E;
+  --navy-m:#1A4080;
+  --navy-l:#EAF0FB;
+  --accent:#2563EB;
+  --accent-l:#DBEAFE;
+  --red:#DC2626;--red-l:#FEF2F2;
+  --green:#059669;--green-l:#ECFDF5;
+  --amber:#D97706;--amber-l:#FFFBEB;
+  --gold:#B8922A;
+  --radius:16px;--radius-sm:10px;
+  --shadow-sm:0 1px 3px rgba(15,29,64,.06),0 2px 8px rgba(15,29,64,.04);
+  --shadow:0 4px 16px rgba(15,29,64,.08),0 1px 4px rgba(15,29,64,.04);
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(env(safe-area-inset-bottom) + 24px);-webkit-font-smoothing:antialiased;}
-.header{background:linear-gradient(135deg,#5B54E6,#4338CA);color:#fff;padding:calc(env(safe-area-inset-top) + 22px) 20px 26px;border-radius:0 0 24px 24px;box-shadow:0 8px 24px rgba(67,56,202,.18);}
-.header .row{display:flex;align-items:center;justify-content:space-between;}
-.header h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.3px;}
-.header .badge{font-size:11px;background:rgba(255,255,255,.18);padding:5px 11px;border-radius:20px;font-weight:600;}
-.header p{margin:7px 0 0;font-size:12.5px;opacity:.85;}
-.header .big{margin-top:16px;display:flex;align-items:baseline;gap:6px;}
-.header .big b{font-size:34px;font-weight:800;line-height:1;}
-.header .big span{font-size:14px;opacity:.85;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(env(safe-area-inset-bottom)+36px);-webkit-font-smoothing:antialiased;}
+
+/* ── 헤더 ── */
+.header{
+  background:linear-gradient(150deg,#0F2D5E 0%,#1A4080 60%,#1E4FA0 100%);
+  padding:calc(env(safe-area-inset-top)+20px) 20px 24px;
+  position:relative;overflow:hidden;
+}
+.header::before{content:'';position:absolute;top:-40px;right:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);}
+.header::after{content:'';position:absolute;bottom:-50px;left:-20px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.03);}
+.header .row{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:2px;}
+.header h1{margin:0;font-size:18px;font-weight:700;color:#fff;letter-spacing:-.2px;}
+.header .badge{font-size:11.5px;background:rgba(255,255,255,.15);color:#fff;padding:5px 13px;border-radius:20px;font-weight:600;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px);white-space:nowrap;}
+.header p{margin:5px 0 0;font-size:12px;color:rgba(255,255,255,.55);position:relative;z-index:1;}
+.header .big{margin-top:16px;display:flex;align-items:baseline;gap:7px;position:relative;z-index:1;}
+.header .big b{font-size:48px;font-weight:800;color:#fff;line-height:1;letter-spacing:-2px;}
+.header .big span{font-size:16px;color:rgba(255,255,255,.65);font-weight:500;}
+
+/* ── 레이아웃 ── */
 .wrap{padding:18px 16px 0;max-width:680px;margin:0 auto;}
-.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
-.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;font-size:14px;font-weight:700;padding:13px;border-radius:13px;cursor:pointer;transition:.15s;border:1.5px solid var(--indigo);}
-.btn.primary{background:var(--indigo);color:#fff;border-color:var(--indigo);box-shadow:0 3px 10px rgba(79,70,229,.22);}
-.btn.primary:active{background:#3F38C5;}
-.btn.ghost{background:#fff;color:var(--indigo);box-shadow:0 2px 8px rgba(79,70,229,.08);}
-.btn.ghost:active{background:var(--soft);}
-.fname{font-size:11.5px;color:var(--sub);text-align:center;margin:8px 0 0;min-height:14px;}
-.spinner{display:none;text-align:center;color:var(--indigo);font-size:13px;padding:12px;font-weight:600;}
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:18px 0;}
-.card{background:var(--card);border-radius:16px;padding:15px 16px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
-.card .ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-.card.c1 .ico{background:#EEF0FF;}.card.c2 .ico{background:#E9FAF1;}.card.c3 .ico{background:#EAF2FF;}.card.c4 .ico{background:#FFF0EF;}
-.card .lbl{font-size:12px;color:var(--sub);margin-top:11px;font-weight:500;}
-.card .val{font-size:26px;font-weight:800;margin-top:1px;letter-spacing:-.5px;}
-.panel{background:var(--card);border-radius:16px;padding:16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
-.sec-title{font-size:13.5px;font-weight:800;margin:0 0 13px;display:flex;align-items:center;gap:7px;letter-spacing:-.2px;}
-.sec-title .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:600;}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px;}
-.field label{display:block;font-size:11.5px;color:var(--sub);margin-bottom:5px;font-weight:600;}
-.field select,.field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--soft);font-size:13.5px;color:var(--txt);font-weight:500;}
-.field select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A8FA3' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 12px center;}
-.field select:focus,.field input:focus{outline:none;border-color:var(--indigo-l);background-color:#fff;}
-.resetbtn{width:100%;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:11px;font-size:12.5px;color:var(--sub);font-weight:600;cursor:pointer;margin-top:3px;}
-.resetbtn:active{background:#ECECF3;}
-.list{display:flex;flex-direction:column;gap:10px;}
-.item{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 2px 8px rgba(30,34,48,.04);border-left:3px solid var(--line);}
-.item.tp-power{border-left-color:#F2645B;}.item.tp-mov{border-left-color:#4C8DF6;}.item.tp-etc{border-left-color:#B8BDCC;}
-.item .top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-.item .name{font-weight:800;font-size:14.5px;letter-spacing:-.2px;}
-.item .name small{font-weight:600;color:var(--sub);font-size:11px;margin-left:5px;}
-.tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;white-space:nowrap;}
-.t-power{background:#FFF0EF;color:#E04A40;}.t-mov{background:#EAF2FF;color:#2F6FE0;}.t-etc{background:#F1F2F7;color:#7A8095;}
-.item .meta{font-size:12px;color:var(--sub);margin-top:9px;display:flex;flex-wrap:wrap;gap:5px 14px;line-height:1.5;}
-.item .meta b{color:var(--txt);font-weight:600;}
-.item .acts{display:flex;gap:8px;margin-top:11px;border-top:1px solid var(--soft);padding-top:10px;}
-.item .acts button{flex:1;font-size:12px;font-weight:700;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--sub);cursor:pointer;}
-.item .acts .ed{color:var(--indigo);}
-.item .acts .del{color:var(--red);}
-.empty{text-align:center;color:var(--sub);font-size:13.5px;padding:44px 0;line-height:1.7;}
+
+/* ── 버튼 ── */
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px;}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;font-size:13.5px;font-weight:600;padding:13px;border-radius:var(--radius-sm);cursor:pointer;transition:.15s;border:none;letter-spacing:-.1px;}
+.btn.primary{background:var(--navy);color:#fff;box-shadow:0 3px 12px rgba(15,45,94,.25);}
+.btn.primary:active{background:var(--navy-m);transform:scale(.98);}
+.btn.ghost{background:var(--card);color:var(--navy);border:1.5px solid var(--border);box-shadow:var(--shadow-sm);}
+.btn.ghost:active{background:var(--navy-l);transform:scale(.98);}
+.fname{font-size:11px;color:var(--muted);text-align:center;margin:6px 0 0;min-height:14px;}
+.spinner{display:none;text-align:center;color:var(--accent);font-size:13px;padding:10px;font-weight:600;}
+
+/* ── 스탯 카드 ── */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0;}
+.card{background:var(--card);border-radius:var(--radius);padding:15px 16px;border:1px solid var(--border);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0;}
+.card.c1::after{background:linear-gradient(90deg,#2563EB,#60A5FA);}
+.card.c2::after{background:linear-gradient(90deg,#059669,#34D399);}
+.card.c3::after{background:linear-gradient(90deg,#0F2D5E,#2563EB);}
+.card.c4::after{background:linear-gradient(90deg,#D97706,#FCD34D);}
+.card .ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:2px;}
+.card.c1 .ico{background:#DBEAFE;}.card.c2 .ico{background:#D1FAE5;}.card.c3 .ico{background:#EAF0FB;}.card.c4 .ico{background:var(--amber-l);}
+.card .lbl{font-size:10.5px;color:var(--muted);margin-top:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;}
+.card .val{font-size:30px;font-weight:800;margin-top:2px;letter-spacing:-1.5px;color:var(--txt);}
+
+/* ── 패널 ── */
+.panel{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.sec-title{font-size:13px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:6px;color:var(--txt);}
+.sec-title .cnt{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;background:var(--bg);padding:3px 9px;border-radius:20px;border:1px solid var(--border);}
+
+/* ── 필터 ── */
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;}
+.field label{display:block;font-size:10.5px;color:var(--sub);margin-bottom:5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;}
+.field select,.field input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-size:13px;color:var(--txt);font-weight:500;appearance:none;transition:.15s;}
+.field select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2396A0B4' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-color:#fff;}
+.field select:focus,.field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.resetbtn{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;color:var(--sub);font-weight:700;cursor:pointer;margin-top:4px;transition:.12s;letter-spacing:.2px;}
+.resetbtn:active{background:var(--navy-l);color:var(--navy);}
+
+/* ── 이벤트 목록 ── */
+.list{display:flex;flex-direction:column;gap:8px;}
+.item{background:var(--card);border-radius:var(--radius);padding:14px 15px;border:1px solid var(--border);box-shadow:var(--shadow-sm);border-left:3.5px solid var(--border);}
+.item.tp-power{border-left-color:var(--red);}
+.item.tp-mov{border-left-color:var(--accent);}
+.item.tp-comm{border-left-color:var(--amber);}
+.item.tp-etc{border-left-color:var(--muted);}
+.item .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.item .name{font-weight:700;font-size:14px;letter-spacing:-.2px;line-height:1.3;}
+.item .name small{font-weight:500;color:var(--muted);font-size:11px;margin-left:5px;}
+.tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.1px;}
+.t-power{background:var(--red-l);color:var(--red);}
+.t-mov{background:var(--accent-l);color:var(--accent);}
+.t-comm{background:var(--amber-l);color:var(--amber);}
+.t-etc{background:var(--bg);color:var(--sub);}
+.item .meta{font-size:11.5px;color:var(--muted);margin-top:9px;display:flex;flex-wrap:wrap;gap:4px 14px;line-height:1.6;}
+.item .meta b{color:var(--sub);font-weight:600;}
+.item .acts{display:flex;gap:7px;margin-top:10px;border-top:1px solid var(--border);padding-top:9px;}
+.item .acts button{flex:1;font-size:12px;font-weight:700;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;transition:.1s;letter-spacing:.1px;}
+.item .acts .ed{color:var(--accent);border-color:var(--accent-l);}
+.item .acts .del{color:var(--red);border-color:var(--red-l);}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:52px 0;line-height:2;}
 input[type=file]{display:none;}
-.foot{text-align:center;color:#B5B9C7;font-size:10.5px;margin:22px 0 8px;line-height:1.7;}
+.foot{text-align:center;color:var(--muted);font-size:10.5px;margin:22px 0 8px;line-height:1.9;}
 .foot a{color:var(--sub);text-decoration:underline;cursor:pointer;}
-/* tab nav */
-.tabnav{display:flex;gap:0;background:var(--card);border-radius:14px;padding:4px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.06);}
-.tabnav button{flex:1;padding:10px 6px;font-size:13px;font-weight:700;border:none;background:transparent;border-radius:11px;cursor:pointer;color:var(--sub);transition:.15s;letter-spacing:-.2px;}
-.tabnav button.active{background:var(--indigo);color:#fff;box-shadow:0 3px 10px rgba(79,70,229,.25);}
+
+/* ── 탭 네비게이션 ── */
+.tabnav{display:flex;gap:3px;background:var(--card);border-radius:var(--radius);padding:4px;margin-bottom:14px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.tabnav button{flex:1;padding:9px 4px;font-size:11.5px;font-weight:700;border:none;background:transparent;border-radius:12px;cursor:pointer;color:var(--muted);transition:.15s;letter-spacing:-.1px;}
+.tabnav button.active{background:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(15,45,94,.3);}
 .tab-panel{display:none;}.tab-panel.active{display:block;}
-/* charts */
-.chart-panel{background:var(--card);border-radius:16px;padding:18px 16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(30,34,48,.04);}
-.chart-panel canvas{max-height:240px;}
-.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+
+/* ── 차트 ── */
+.chart-panel{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.chart-panel canvas{max-height:230px;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .chart-row .chart-panel{margin-bottom:0;}
-.chart-row .chart-panel canvas{max-height:200px;}
-.chart-empty{text-align:center;color:var(--sub);font-size:13px;padding:30px 0;}
-/* 관리자 탭 */
-.admin-panel{background:var(--card);border-radius:16px;padding:24px 18px;box-shadow:0 2px 10px rgba(30,34,48,.06);}
-.admin-panel h3{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px;}
-.admin-panel p{font-size:12.5px;color:var(--sub);margin-bottom:18px;}
+.chart-row .chart-panel canvas{max-height:190px;}
+.chart-empty{text-align:center;color:var(--muted);font-size:13px;padding:28px 0;}
+
+/* ── 관리자 탭 ── */
+.admin-panel{background:var(--card);border-radius:var(--radius);padding:24px 20px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.admin-panel h3{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:5px;}
+.admin-panel p{font-size:12px;color:var(--sub);margin-bottom:20px;line-height:1.7;}
 .pw-row{display:flex;gap:8px;align-items:center;}
-.pw-row input{flex:1;padding:11px 14px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;letter-spacing:4px;outline:none;background:var(--soft);}
-.pw-row input:focus{border-color:var(--indigo);}
-.pw-row button{padding:11px 18px;background:var(--indigo);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;}
-.admin-status{margin-top:14px;padding:12px 15px;border-radius:11px;font-size:13px;font-weight:600;display:none;}
-.admin-status.ok{background:#DCFCE7;color:#16A34A;display:block;}
-.admin-status.fail{background:#FEE2E2;color:#DC2626;display:block;}
-.admin-badge{display:inline-block;background:#16A34A;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
-/* 동기화 상태 */
-.sync-bar{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--sub);background:var(--card);border-radius:11px;padding:8px 13px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,34,48,.04);}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:#B8BDCC;flex-shrink:0;}
-.sync-dot.ok{background:#16A34A;}.sync-dot.err{background:#E04A40;}.sync-dot.ing{background:#D97706;animation:pulse 1s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-/* modal */
-.overlay{position:fixed;inset:0;background:rgba(20,22,35,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+.pw-row input{flex:1;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:17px;letter-spacing:5px;outline:none;background:#fff;transition:.15s;}
+.pw-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.pw-row button{padding:12px 20px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(15,45,94,.2);}
+.admin-status{margin-top:14px;padding:12px 15px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;display:none;}
+.admin-status.ok{background:var(--green-l);color:var(--green);display:block;}
+.admin-status.fail{background:var(--red-l);color:var(--red);display:block;}
+.admin-badge{display:inline-block;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+
+/* ── 설비관리 ── */
+.maint-search{display:flex;gap:8px;margin-bottom:12px;}
+.maint-search input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;outline:none;background:#fff;transition:.15s;}
+.maint-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.maint-search button{padding:11px 16px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;}
+.maint-card{background:var(--card);border-radius:var(--radius);padding:15px 16px;margin-bottom:10px;border:1px solid var(--border);box-shadow:var(--shadow-sm);cursor:pointer;transition:.15s;border-left:3.5px solid var(--accent);}
+.maint-card:active{transform:scale(.99);box-shadow:none;}
+.maint-card-hd{display:flex;justify-content:space-between;align-items:center;}
+.maint-card-name{font-size:14px;font-weight:700;color:var(--txt);}
+.maint-card-cnt{font-size:11px;color:var(--accent);background:var(--accent-l);padding:3px 10px;border-radius:20px;font-weight:700;}
+.maint-card-last{font-size:11.5px;color:var(--muted);margin-top:5px;}
+.maint-empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 0;}
+.maint-detail{display:none;}.maint-detail.active{display:block;}
+.maint-back{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;margin-bottom:16px;background:none;border:none;padding:0;}
+.maint-detail-name{font-size:18px;font-weight:800;color:var(--txt);margin-bottom:16px;letter-spacing:-.3px;}
+.maint-rec{background:var(--card);border-radius:var(--radius);padding:15px 16px;margin-bottom:10px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.maint-rec-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.maint-rec-date{font-size:11.5px;color:var(--muted);font-weight:500;}
+.maint-rec-worker{font-size:12px;font-weight:700;color:var(--accent);}
+.maint-rec-title{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:5px;}
+.maint-rec-body{font-size:12.5px;color:var(--sub);line-height:1.7;white-space:pre-wrap;}
+.maint-rec-imgs{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.maint-rec-imgs img{width:calc(50% - 4px);border-radius:10px;object-fit:cover;aspect-ratio:4/3;cursor:pointer;}
+.maint-rec-del{font-size:11px;color:var(--red);cursor:pointer;border:none;background:none;padding:0;margin-top:7px;font-weight:600;}
+.maint-form{background:var(--card);border-radius:var(--radius);padding:18px 16px;margin-bottom:14px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.maint-form h4{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--txt);}
+.maint-form label{display:block;font-size:10.5px;font-weight:700;color:var(--sub);margin-bottom:5px;margin-top:12px;letter-spacing:.3px;text-transform:uppercase;}
+.maint-form input,.maint-form textarea{width:100%;box-sizing:border-box;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;outline:none;background:#fff;transition:.15s;}
+.maint-form input:focus,.maint-form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.maint-form textarea{resize:vertical;min-height:80px;}
+.img-preview{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.img-preview-item{position:relative;width:calc(50% - 4px);}
+.img-preview-item img{width:100%;border-radius:10px;aspect-ratio:4/3;object-fit:cover;}
+.img-preview-item button{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;line-height:1;}
+.maint-submit{width:100%;margin-top:14px;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(15,45,94,.2);}
+#imgLightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;}
+#imgLightbox.on{display:flex;}
+#imgLightbox img{max-width:95vw;max-height:90vh;border-radius:12px;object-fit:contain;}
+#imgLightbox .lb-close{position:absolute;top:18px;right:18px;color:#fff;font-size:30px;cursor:pointer;background:none;border:none;}
+
+/* ── 동기화 상태 ── */
+.sync-bar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--sub);background:var(--card);border-radius:var(--radius-sm);padding:9px 14px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sync-dot.ok{background:var(--green);}.sync-dot.err{background:var(--red);}.sync-dot.ing{background:var(--amber);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ── 모달 시트 ── */
+.overlay{position:fixed;inset:0;background:rgba(10,20,50,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);}
 .overlay.on{display:flex;}
-.sheet{background:#fff;width:100%;max-width:680px;border-radius:22px 22px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom) + 20px);max-height:92vh;overflow-y:auto;animation:up .22s ease;}
-@keyframes up{from{transform:translateY(40px);opacity:.6;}to{transform:translateY(0);opacity:1;}}
-.sheet h2{margin:0 0 16px;font-size:17px;font-weight:800;}
-.sheet .field{margin-bottom:12px;}
+.sheet{background:#fff;width:100%;max-width:680px;border-radius:22px 22px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom)+22px);max-height:92vh;overflow-y:auto;animation:up .22s ease;}
+@keyframes up{from{transform:translateY(24px);opacity:.7;}to{transform:translateY(0);opacity:1;}}
+.sheet h2{margin:0 0 18px;font-size:16px;font-weight:700;letter-spacing:-.2px;}
+.sheet .field{margin-bottom:11px;}
 .sheet .frow{margin-bottom:0;}
-.sheet .save{width:100%;background:var(--indigo);color:#fff;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px;}
-.sheet .cancel{width:100%;background:var(--soft);color:var(--sub);border:none;border-radius:13px;padding:13px;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:9px;}
+.sheet .save{width:100%;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;box-shadow:0 3px 10px rgba(15,45,94,.2);}
+.sheet .cancel{width:100%;background:#fff;color:var(--sub);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
 </style>
 </head>
 <body>
 <div class="header">
-  <div class="row"><h1>📋 경보이력 현황</h1><span class="badge" id="hd-region">경주·외동</span></div>
-  <p>정압기 경보이력 통합 대시보드</p>
+  <div class="row"><h1>정압기 통합관리</h1><span class="badge" id="hd-region">경주·안강·외동·영천</span></div>
+  <p>경보이력 · 보수조치 통합 대시보드</p>
   <div class="big"><b id="hd-count">0</b><span>건</span></div>
 </div>
+
 <div class="wrap">
   <!-- 탭 네비게이션 -->
   <div class="tabnav" style="margin-top:18px;">
     <button class="active" onclick="switchTab('list')">📑 목록</button>
     <button onclick="switchTab('chart')">📊 통계</button>
+    <button onclick="switchTab('maint')">🔧 설비관리</button>
     <button onclick="switchTab('admin')" id="adminTabBtn">🔐 관리자</button>
   </div>
+
   <!-- 목록 탭 -->
   <div class="tab-panel active" id="tab-list">
   <div class="sync-bar" id="syncBar"><div class="sync-dot ing" id="syncDot"></div><span id="syncMsg">Firebase 연결 중…</span></div>
@@ -147,12 +247,14 @@ input[type=file]{display:none;}
   </div>
   <div class="fname" id="fname"></div>
   <div class="spinner" id="spinner">PDF 분석 중…</div>
+
   <div class="cards">
     <div class="card c1"><div class="ico">📊</div><div class="lbl">총 이벤트</div><div class="val" id="c-total">0</div></div>
     <div class="card c2"><div class="ico">📍</div><div class="lbl">관련 정압기</div><div class="val" id="c-station">0</div></div>
     <div class="card c3"><div class="ico">🔧</div><div class="lbl">MOV / SSV</div><div class="val" id="c-mov">0</div></div>
     <div class="card c4"><div class="ico">⚡</div><div class="lbl">정전</div><div class="val" id="c-power">0</div></div>
   </div>
+
   <div class="panel">
     <div class="sec-title">🔍 필터</div>
     <div class="frow">
@@ -173,13 +275,16 @@ input[type=file]{display:none;}
     </div>
     <button class="resetbtn" id="resetBtn">↺ 필터 초기화</button>
   </div>
+
   <div class="panel" style="background:transparent;box-shadow:none;padding:0;">
     <div class="sec-title">📑 이벤트 목록 <span class="cnt" id="listCount"></span></div>
     <div class="list" id="list"></div>
   </div>
-  <div class="foot">내장 데이터 118건 · 오프라인 지원 · 휴대폰 안에서만 동작<br>
+
+  <div class="foot">내장 데이터 77건 · 오프라인 지원 · 휴대폰 안에서만 동작<br>
     <a id="restoreBtn">기본(원본) 데이터로 초기화</a></div>
   </div><!-- /tab-list -->
+
   <!-- 통계 탭 -->
   <div class="tab-panel" id="tab-chart">
     <!-- 이벤트 유형 파이 + 정압기 순위 -->
@@ -221,7 +326,51 @@ input[type=file]{display:none;}
       <div class="admin-status" id="adminStatus"></div>
     </div>
   </div><!-- /tab-admin -->
+  <!-- 설비관리 탭 -->
+  <div class="tab-panel" id="tab-maint">
+    <!-- 목록 뷰 -->
+    <div id="maintList">
+      <div class="maint-search">
+        <input type="text" id="maintSearch" placeholder="정압기명 검색…" oninput="renderMaintList()">
+        <button onclick="renderMaintList()">🔍</button>
+      </div>
+      <div id="maintCards"></div>
+    </div>
+    <!-- 상세 뷰 -->
+    <div class="maint-detail" id="maintDetail">
+      <button class="maint-back" onclick="closeMaintDetail()">← 목록으로</button>
+      <div class="maint-detail-name" id="maintDetailName"></div>
+      <!-- 이력 추가 폼 (관리자만) -->
+      <div class="maint-form" id="maintFormWrap" style="display:none;">
+        <h4>➕ 보수 이력 추가</h4>
+        <label>날짜</label>
+        <input type="date" id="mf-date">
+        <label>담당자</label>
+        <input type="text" id="mf-worker" placeholder="담당자 이름">
+        <label>문제 내용</label>
+        <input type="text" id="mf-title" placeholder="예) 압력 이상, 밸브 누설">
+        <label>조치 내용</label>
+        <textarea id="mf-body" placeholder="상세 조치 내용을 입력하세요"></textarea>
+        <label>사진 첨부 (최대 2장)</label>
+        <input type="file" id="mf-imgs" accept="image/*" multiple>
+        <div class="img-preview" id="mf-preview"></div>
+        <button class="maint-submit" onclick="window.addMaintRec()">저장</button>
+      </div>
+      <!-- 이력 목록 -->
+      <div id="maintRecs"></div>
+    </div>
+  </div><!-- /tab-maint -->
+
+  <!-- 이미지 라이트박스 -->
+  <div id="imgLightbox">
+    <button class="lb-close" onclick="document.getElementById('imgLightbox').classList.remove('on')">✕</button>
+    <img id="lbImg" src="">
+  </div>
+
+
+
 </div>
+
 <!-- 입력/수정 시트 -->
 <div class="overlay" id="overlay">
   <div class="sheet">
@@ -240,15 +389,19 @@ input[type=file]{display:none;}
     <button class="cancel" id="cancelBtn">취소</button>
   </div>
 </div>
+
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const EMBEDDED = [{"region": "경주", "id": "71", "name": "건천용명", "event": "가스누출", "detect": "2025-01-01 09:01:14", "restore": "2025-01-01 09:01:19", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-01-01", "sh": "09", "eh": "09"}, {"region": "경주", "id": "36", "name": "시래동국태", "event": "정전", "detect": "2025-01-01 12:15:40", "restore": "2025-01-01 12:15:42", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-01-01", "sh": "12", "eh": "12"}, {"region": "경주", "id": "71", "name": "건천용명", "event": "RTU 외함", "detect": "2025-01-04 00:41:23", "restore": "2025-01-04 00:42:14", "kind": "일상점검", "elapsed": "00:00:51", "date": "2025-01-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-09 23:14:45", "restore": "2025-01-09 23:15:51", "kind": "일상점검", "elapsed": "00:01:06", "date": "2025-01-09", "sh": "23", "eh": "23"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-01-10 12:08:43", "restore": "2025-01-10 12:14:58", "kind": "일상점검", "elapsed": "00:06:15", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-10 12:15:21", "restore": "2025-01-10 12:16:22", "kind": "일상점검", "elapsed": "00:01:01", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2025-01-13 07:18:13", "restore": "2025-01-13 07:18:14", "kind": "일상점검", "elapsed": "00:00:01", "date": "2025-01-13", "sh": "07", "eh": "07"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "정전", "detect": "2025-02-07 19:53:56", "restore": "2025-02-07 19:53:58", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-02-08 00:49:15", "restore": "2025-02-08 00:49:17", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-08", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "RTU 외함", "detect": "2025-02-08 01:35:46", "restore": "2025-02-08 02:07:34", "kind": "일상점검", "elapsed": "00:31:48", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-02-08 01:36:24", "restore": "2025-02-08 02:06:57", "kind": "일상점검", "elapsed": "00:30:33", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "82", "name": "남산통일전", "event": "정압실문", "detect": "2025-02-08 09:37:58", "restore": "2025-02-08 09:40:52", "kind": "일상점검", "elapsed": "00:02:54", "date": "2025-02-08", "sh": "09", "eh": "09"}, {"region": "경주", "id": "67", "name": "서면아화", "event": "정전", "detect": "2025-02-09 11:13:48", "restore": "2025-02-09 11:15:13", "kind": "실제", "elapsed": "00:01:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "32", "name": "건천녹지", "event": "정전", "detect": "2025-02-09 11:13:49", "restore": "2025-02-09 11:46:14", "kind": "실제", "elapsed": "00:32:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "80", "name": "하동마을", "event": "정전", "detect": "2025-02-12 23:18:48", "restore": "2025-02-12 23:20:09", "kind": "실제", "elapsed": "00:01:21", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "정전", "detect": "2025-02-12 23:20:10", "restore": "2025-02-12 23:20:11", "kind": "실제", "elapsed": "00:00:01", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "81", "name": "황성힐스테이트", "event": "정전", "detect": "2025-02-13 14:11:57", "restore": "2025-02-13 14:16:10", "kind": "실제", "elapsed": "00:04:13", "date": "2025-02-13", "sh": "14", "eh": "14"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2025-02-14 15:09:04", "restore": "2025-02-14 15:11:19", "kind": "일상점검", "elapsed": "00:02:15", "date": "2025-02-14", "sh": "15", "eh": "15"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "통신이상 FMS", "detect": "2025-02-18 08:48:14", "restore": "2025-02-18 08:49:04", "kind": "일상점검", "elapsed": "00:00:50", "date": "2025-02-18", "sh": "08", "eh": "08"}, {"region": "외동", "id": "65", "name": "외동미소", "event": "2차압력 하한", "detect": "2025-03-31 06:33:32", "restore": "2025-03-31 06:33:34", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-03-31", "sh": "06", "eh": "06"}, {"region": "경주", "id": "70", "name": "나원아진", "event": "정압실문", "detect": "2025-04-14 13:26:37", "restore": "2025-04-14 13:56:09", "kind": "일상점검", "elapsed": "00:29:32", "date": "2025-04-14", "sh": "13", "eh": "13"}, {"region": "경주", "id": "70", "name": "나원아진", "event": "2차압력 하한", "detect": "2025-04-14 13:35:35", "restore": "2025-04-14 13:35:51", "kind": "일상점검", "elapsed": "00:00:16", "date": "2025-04-14", "sh": "13", "eh": "13"}, {"region": "경주", "id": "70", "name": "나원아진", "event": "2차압력 하한", "detect": "2025-04-14 13:35:59", "restore": "2025-04-14 13:36:13", "kind": "일상점검", "elapsed": "00:00:14", "date": "2025-04-14", "sh": "13", "eh": "13"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "정전", "detect": "2025-04-18 19:21:02", "restore": "2025-04-18 20:23:55", "kind": "일상점검", "elapsed": "01:02:53", "date": "2025-04-18", "sh": "19", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:14:09", "restore": "2025-04-18 20:26:08", "kind": "일상점검", "elapsed": "00:11:59", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "가스누출", "detect": "2025-04-18 20:16:55", "restore": "2025-04-18 20:17:05", "kind": "일상점검", "elapsed": "00:00:10", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:26:10", "restore": "2025-04-18 20:26:15", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "18", "name": "황성유원", "event": "정전", "detect": "2025-04-18 22:29:29", "restore": "2025-04-18 22:48:23", "kind": "일상점검", "elapsed": "00:18:54", "date": "2025-04-18", "sh": "22", "eh": "22"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:13:54", "restore": "2025-04-30 01:13:57", "kind": "일상점검", "elapsed": "00:00:03", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:15:28", "restore": "2025-04-30 01:15:35", "kind": "일상점검", "elapsed": "00:00:07", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정전", "detect": "2025-06-14 05:45:36", "restore": "2025-06-14 06:44:44", "kind": "일상점검", "elapsed": "00:59:08", "date": "2025-06-14", "sh": "05", "eh": "06"}, {"region": "경주", "id": "26", "name": "성동프리텔", "event": "정전", "detect": "2025-06-20 13:42:56", "restore": "2025-06-20 13:43:20", "kind": "일상점검", "elapsed": "00:00:24", "date": "2025-06-20", "sh": "13", "eh": "13"}, {"region": "경주", "id": "75", "name": "광명녹지", "event": "2차압력 상한", "detect": "2025-07-01 01:32:42", "restore": "2025-07-01 02:01:14", "kind": "일상점검", "elapsed": "00:28:32", "date": "2025-07-01", "sh": "01", "eh": "02"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "RTU 외함", "detect": "2025-08-04 00:34:22", "restore": "2025-08-04 00:51:23", "kind": "일상점검", "elapsed": "00:17:01", "date": "2025-08-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "통신이상", "detect": "2025-08-04 00:44:51", "restore": "2025-08-04 00:49:43", "kind": "일상점검", "elapsed": "00:04:52", "date": "2025-08-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "RTU 외함", "detect": "2025-08-04 01:39:01", "restore": "2025-08-04 01:47:21", "kind": "일상점검", "elapsed": "00:08:20", "date": "2025-08-04", "sh": "01", "eh": "01"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "RTU 외함", "detect": "2025-08-05 15:19:24", "restore": "2025-08-05 15:24:26", "kind": "일상점검", "elapsed": "00:05:02", "date": "2025-08-05", "sh": "15", "eh": "15"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "정압실문", "detect": "2025-08-05 15:24:26", "restore": "2025-08-05 15:24:42", "kind": "일상점검", "elapsed": "00:00:16", "date": "2025-08-05", "sh": "15", "eh": "15"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "RTU 외함", "detect": "2025-08-06 13:23:39", "restore": "2025-08-06 13:37:42", "kind": "일상점검", "elapsed": "00:14:03", "date": "2025-08-06", "sh": "13", "eh": "13"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "정전", "detect": "2025-08-06 13:26:29", "restore": "2025-08-06 13:34:14", "kind": "일상점검", "elapsed": "00:07:45", "date": "2025-08-06", "sh": "13", "eh": "13"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "통신이상", "detect": "2025-08-06 13:31:29", "restore": "2025-08-06 13:34:14", "kind": "일상점검", "elapsed": "00:02:45", "date": "2025-08-06", "sh": "13", "eh": "13"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "정전", "detect": "2025-08-06 13:34:56", "restore": "2025-08-06 13:35:10", "kind": "일상점검", "elapsed": "00:00:14", "date": "2025-08-06", "sh": "13", "eh": "13"}, {"region": "경주", "id": "19", "name": "금장삼성", "event": "정전", "detect": "2025-08-06 13:36:25", "restore": "2025-08-06 13:37:21", "kind": "일상점검", "elapsed": "00:00:56", "date": "2025-08-06", "sh": "13", "eh": "13"}, {"region": "경주", "id": "42", "name": "보문숲머리", "event": "정전", "detect": "2025-08-18 10:44:16", "restore": "2025-08-18 13:16:56", "kind": "일상점검", "elapsed": "02:32:40", "date": "2025-08-18", "sh": "10", "eh": "13"}, {"region": "경주", "id": "42", "name": "보문숲머리", "event": "RTU 외함", "detect": "2025-08-18 13:15:19", "restore": "2025-08-18 13:48:30", "kind": "일상점검", "elapsed": "00:33:11", "date": "2025-08-18", "sh": "13", "eh": "13"}, {"region": "경주", "id": "42", "name": "보문숲머리", "event": "정전", "detect": "2025-08-18 13:19:43", "restore": "2025-08-18 13:48:30", "kind": "일상점검", "elapsed": "00:28:47", "date": "2025-08-18", "sh": "13", "eh": "13"}, {"region": "경주", "id": "42", "name": "보문숲머리", "event": "통신이상", "detect": "2025-08-18 13:25:10", "restore": "2025-08-18 13:48:25", "kind": "일상점검", "elapsed": "00:23:15", "date": "2025-08-18", "sh": "13", "eh": "13"}, {"region": "경주", "id": "31", "name": "도지코아루", "event": "정전", "detect": "2025-08-20 02:37:28", "restore": "2025-08-20 02:37:34", "kind": "일상점검", "elapsed": "00:00:06", "date": "2025-08-20", "sh": "02", "eh": "02"}, {"region": "경주", "id": "77", "name": "화천녹지", "event": "정전", "detect": "2025-09-01 09:23:58", "restore": "2025-09-01 10:47:11", "kind": "일상점검", "elapsed": "01:23:13", "date": "2025-09-01", "sh": "09", "eh": "10"}, {"region": "경주", "id": "77", "name": "화천녹지", "event": "RTU 외함", "detect": "2025-09-01 10:07:02", "restore": "2025-09-01 10:10:28", "kind": "일상점검", "elapsed": "00:03:26", "date": "2025-09-01", "sh": "10", "eh": "10"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "2차압력 하한", "detect": "2025-09-14 13:47:29", "restore": "2025-09-14 13:47:31", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-09-14", "sh": "13", "eh": "13"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "통신이상", "detect": "2025-09-21 22:13:35", "restore": "2025-09-21 22:44:19", "kind": "일상점검", "elapsed": "00:30:44", "date": "2025-09-21", "sh": "22", "eh": "22"}, {"region": "경주", "id": "64", "name": "외동모화", "event": "RTU 외함", "detect": "2025-09-30 17:46:35", "restore": "2025-09-30 17:54:17", "kind": "일상점검", "elapsed": "00:07:42", "date": "2025-09-30", "sh": "17", "eh": "17"}, {"region": "경주", "id": "64", "name": "외동모화", "event": "정전", "detect": "2025-09-30 17:50:53", "restore": "2025-09-30 17:52:39", "kind": "일상점검", "elapsed": "00:01:46", "date": "2025-09-30", "sh": "17", "eh": "17"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 18:50:35", "restore": "2025-10-07 18:50:37", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "18", "eh": "18"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "RTU 외함", "detect": "2025-10-07 19:16:12", "restore": "2025-10-07 19:24:42", "kind": "일상점검", "elapsed": "00:08:30", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정전", "detect": "2025-10-07 19:16:37", "restore": "2025-10-07 19:16:39", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정압실문", "detect": "2025-10-07 19:17:50", "restore": "2025-10-07 19:23:58", "kind": "일상점검", "elapsed": "00:06:08", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "RTU 외함", "detect": "2025-10-07 19:27:39", "restore": "2025-10-07 19:30:07", "kind": "일상점검", "elapsed": "00:02:28", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 19:45:35", "restore": "2025-10-07 19:45:37", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정압실문", "detect": "2025-10-07 19:46:51", "restore": "2025-10-07 19:53:35", "kind": "일상점검", "elapsed": "00:06:44", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 19:47:00", "restore": "2025-10-07 19:47:14", "kind": "일상점검", "elapsed": "00:00:14", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-08 04:20:15", "restore": "2025-10-08 04:20:21", "kind": "일상점검", "elapsed": "00:00:06", "date": "2025-10-08", "sh": "04", "eh": "04"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "통신이상", "detect": "2025-10-21 23:23:08", "restore": "2025-10-21 23:25:16", "kind": "일상점검", "elapsed": "00:02:08", "date": "2025-10-21", "sh": "23", "eh": "23"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-27 10:17:58", "restore": "2025-10-27 10:36:27", "kind": "일상점검", "elapsed": "00:18:29", "date": "2025-10-27", "sh": "10", "eh": "10"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-27 10:41:27", "restore": "2025-10-27 10:54:41", "kind": "일상점검", "elapsed": "00:13:14", "date": "2025-10-27", "sh": "10", "eh": "10"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-28 17:31:58", "restore": "2025-10-28 17:32:10", "kind": "일상점검", "elapsed": "00:00:12", "date": "2025-10-28", "sh": "17", "eh": "17"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-28 20:08:11", "restore": "2025-10-28 20:08:27", "kind": "일상점검", "elapsed": "00:00:16", "date": "2025-10-28", "sh": "20", "eh": "20"}, {"region": "경주", "id": "13", "name": "천북동산", "event": "정전", "detect": "2025-11-10 09:31:11", "restore": "2025-11-10 10:28:50", "kind": "일상점검", "elapsed": "00:57:39", "date": "2025-11-10", "sh": "09", "eh": "10"}, {"region": "경주", "id": "13", "name": "천북동산", "event": "통신이상", "detect": "2025-11-10 09:37:07", "restore": "2025-11-10 10:28:43", "kind": "일상점검", "elapsed": "00:51:36", "date": "2025-11-10", "sh": "09", "eh": "10"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "통신이상", "detect": "2025-11-12 03:22:32", "restore": "2025-11-12 04:31:37", "kind": "일상점검", "elapsed": "01:09:05", "date": "2025-11-12", "sh": "03", "eh": "04"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "RTU 외함", "detect": "2025-11-12 04:31:43", "restore": "2025-11-12 04:32:14", "kind": "일상점검", "elapsed": "00:00:31", "date": "2025-11-12", "sh": "04", "eh": "04"}, {"region": "경주", "id": "10", "name": "동천녹지2", "event": "정전", "detect": "2025-11-18 15:29:37", "restore": "2025-11-18 16:26:19", "kind": "자율검사", "elapsed": "00:56:42", "date": "2025-11-18", "sh": "15", "eh": "16"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:20:19", "restore": "2025-12-30 10:20:23", "kind": "일상점검", "elapsed": "00:00:04", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:20:19", "restore": "2025-12-30 10:20:23", "kind": "일상점검", "elapsed": "00:00:04", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:20:30", "restore": "2025-12-30 10:20:42", "kind": "일상점검", "elapsed": "00:00:12", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:20:30", "restore": "2025-12-30 10:20:42", "kind": "일상점검", "elapsed": "00:00:12", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:20:44", "restore": "2025-12-30 10:20:46", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:20:44", "restore": "2025-12-30 10:20:46", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:20:48", "restore": "2025-12-30 10:20:50", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:20:48", "restore": "2025-12-30 10:20:56", "kind": "일상점검", "elapsed": "00:00:08", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:20:52", "restore": "2025-12-30 10:20:56", "kind": "일상점검", "elapsed": "00:00:04", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:21:03", "restore": "2025-12-30 10:21:05", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:21:09", "restore": "2025-12-30 10:21:11", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:21:09", "restore": "2025-12-30 10:21:11", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-12-30 10:21:13", "restore": "2025-12-30 10:21:15", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "1차압력 상한", "detect": "2025-12-30 10:21:13", "restore": "2025-12-30 10:21:15", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-12-30", "sh": "10", "eh": "10"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "RTU 외함", "detect": "2025-12-30 13:52:57", "restore": "2025-12-30 14:23:00", "kind": "일상점검", "elapsed": "00:30:03", "date": "2025-12-30", "sh": "13", "eh": "14"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "정압실문", "detect": "2025-12-30 14:04:27", "restore": "2025-12-30 14:37:43", "kind": "일상점검", "elapsed": "00:33:16", "date": "2025-12-30", "sh": "14", "eh": "14"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "RTU 외함", "detect": "2025-12-30 14:23:01", "restore": "2025-12-30 14:23:28", "kind": "일상점검", "elapsed": "00:00:27", "date": "2025-12-30", "sh": "14", "eh": "14"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "RTU 외함", "detect": "2025-12-30 14:23:30", "restore": "2025-12-30 15:09:36", "kind": "일상점검", "elapsed": "00:46:06", "date": "2025-12-30", "sh": "14", "eh": "15"}, {"region": "경주", "id": "24", "name": "동천푸르지오", "event": "정전", "detect": "2026-01-20 05:14:44", "restore": "2026-01-20 05:14:48", "kind": "실제", "elapsed": "00:00:04", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "17", "name": "황성삼보", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "18", "name": "황성유원", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:20:46", "kind": "실제", "elapsed": "00:05:59", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "SSV1", "detect": "2026-04-01 02:43:09", "restore": "2026-04-01 03:53:05", "kind": "일상점검", "elapsed": "01:09:56", "date": "2026-04-01", "sh": "02", "eh": "03"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 03:37:58", "restore": "2026-04-01 05:17:19", "kind": "일상점검", "elapsed": "01:39:21", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "RTU 외함", "detect": "2026-04-01 03:40:46", "restore": "2026-04-01 05:21:08", "kind": "일상점검", "elapsed": "01:40:22", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 05:18:38", "restore": "2026-04-01 05:19:51", "kind": "일상점검", "elapsed": "00:01:13", "date": "2026-04-01", "sh": "05", "eh": "05"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 18:34:30", "restore": "2026-04-03 19:18:37", "kind": "일상점검", "elapsed": "00:44:07", "date": "2026-04-03", "sh": "18", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:18:49", "restore": "2026-04-03 19:20:20", "kind": "일상점검", "elapsed": "00:01:31", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 19:25:50", "restore": "2026-04-03 19:59:26", "kind": "일상점검", "elapsed": "00:33:36", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:59:26", "restore": "2026-04-03 20:12:15", "kind": "일상점검", "elapsed": "00:12:49", "date": "2026-04-03", "sh": "19", "eh": "20"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-04-04 11:46:37", "restore": "2026-04-04 11:49:25", "kind": "실제", "elapsed": "00:02:48", "date": "2026-04-04", "sh": "11", "eh": "11"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-01 22:52:27", "restore": "2026-05-02 17:52:04", "kind": "오작동", "elapsed": "18:59:37", "date": "2026-05-01", "sh": "22", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 14:53:40", "restore": "2026-05-02 16:46:30", "kind": "오작동", "elapsed": "01:52:50", "date": "2026-05-02", "sh": "14", "eh": "16"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "RTU 외함", "detect": "2026-05-02 16:46:37", "restore": "2026-05-02 17:53:05", "kind": "오작동", "elapsed": "01:06:28", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 16:51:53", "restore": "2026-05-02 17:51:58", "kind": "오작동", "elapsed": "01:00:05", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:09:23", "restore": "2026-05-03 10:09:25", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:10:17", "restore": "2026-05-03 10:10:19", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 08:08:59", "restore": "2026-05-20 08:09:01", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "08", "eh": "08"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 18:40:07", "restore": "2026-05-20 18:40:09", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "18", "eh": "18"}];
+
+const EMBEDDED = [{"region": "경주", "id": "71", "name": "건천용명", "event": "가스누출", "detect": "2025-01-01 09:01:14", "restore": "2025-01-01 09:01:19", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-01-01", "sh": "09", "eh": "09"}, {"region": "경주", "id": "36", "name": "시래동국태", "event": "정전", "detect": "2025-01-01 12:15:40", "restore": "2025-01-01 12:15:42", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-01-01", "sh": "12", "eh": "12"}, {"region": "경주", "id": "71", "name": "건천용명", "event": "RTU 외함", "detect": "2025-01-04 00:41:23", "restore": "2025-01-04 00:42:14", "kind": "일상점검", "elapsed": "00:00:51", "date": "2025-01-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-09 23:14:45", "restore": "2025-01-09 23:15:51", "kind": "일상점검", "elapsed": "00:01:06", "date": "2025-01-09", "sh": "23", "eh": "23"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-01-10 12:08:43", "restore": "2025-01-10 12:14:58", "kind": "일상점검", "elapsed": "00:06:15", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정전", "detect": "2025-01-10 12:15:21", "restore": "2025-01-10 12:16:22", "kind": "일상점검", "elapsed": "00:01:01", "date": "2025-01-10", "sh": "12", "eh": "12"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2025-01-13 07:18:13", "restore": "2025-01-13 07:18:14", "kind": "일상점검", "elapsed": "00:00:01", "date": "2025-01-13", "sh": "07", "eh": "07"}, {"region": "경주", "id": "14", "name": "황성현진", "event": "정전", "detect": "2025-02-07 19:53:56", "restore": "2025-02-07 19:53:58", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "2차압력 상한", "detect": "2025-02-08 00:49:15", "restore": "2025-02-08 00:49:17", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-02-08", "sh": "00", "eh": "00"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "RTU 외함", "detect": "2025-02-08 01:35:46", "restore": "2025-02-08 02:07:34", "kind": "일상점검", "elapsed": "00:31:48", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "정압실문", "detect": "2025-02-08 01:36:24", "restore": "2025-02-08 02:06:57", "kind": "일상점검", "elapsed": "00:30:33", "date": "2025-02-08", "sh": "01", "eh": "02"}, {"region": "경주", "id": "67", "name": "서면아화", "event": "정전", "detect": "2025-02-09 11:13:48", "restore": "2025-02-09 11:15:13", "kind": "실제", "elapsed": "00:01:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "32", "name": "건천녹지", "event": "정전", "detect": "2025-02-09 11:13:49", "restore": "2025-02-09 11:46:14", "kind": "실제", "elapsed": "00:32:25", "date": "2025-02-09", "sh": "11", "eh": "11"}, {"region": "경주", "id": "80", "name": "하동마을", "event": "정전", "detect": "2025-02-12 23:18:48", "restore": "2025-02-12 23:20:09", "kind": "실제", "elapsed": "00:01:21", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "정전", "detect": "2025-02-12 23:20:10", "restore": "2025-02-12 23:20:11", "kind": "실제", "elapsed": "00:00:01", "date": "2025-02-12", "sh": "23", "eh": "23"}, {"region": "경주", "id": "4", "name": "외동지구", "event": "통신이상 FMS", "detect": "2025-02-18 08:48:14", "restore": "2025-02-18 08:49:04", "kind": "일상점검", "elapsed": "00:00:50", "date": "2025-02-18", "sh": "08", "eh": "08"}, {"region": "외동", "id": "65", "name": "외동미소", "event": "2차압력 하한", "detect": "2025-03-31 06:33:32", "restore": "2025-03-31 06:33:34", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-03-31", "sh": "06", "eh": "06"}, {"region": "외동", "id": "18", "name": "황성유원", "event": "정전", "detect": "2025-04-18 22:29:29", "restore": "2025-04-18 22:48:23", "kind": "일상점검", "elapsed": "00:18:54", "date": "2025-04-18", "sh": "22", "eh": "22"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "정전", "detect": "2025-04-18 19:21:02", "restore": "2025-04-18 20:23:55", "kind": "일상점검", "elapsed": "01:02:53", "date": "2025-04-18", "sh": "19", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:14:09", "restore": "2025-04-18 20:26:08", "kind": "일상점검", "elapsed": "00:11:59", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "가스누출", "detect": "2025-04-18 20:16:55", "restore": "2025-04-18 20:17:05", "kind": "일상점검", "elapsed": "00:00:10", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "59", "name": "안강한신", "event": "RTU 외함", "detect": "2025-04-18 20:26:10", "restore": "2025-04-18 20:26:15", "kind": "일상점검", "elapsed": "00:00:05", "date": "2025-04-18", "sh": "20", "eh": "20"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:13:54", "restore": "2025-04-30 01:13:57", "kind": "일상점검", "elapsed": "00:00:03", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "외동", "id": "79", "name": "모화3리", "event": "SSV2", "detect": "2025-04-30 01:15:28", "restore": "2025-04-30 01:15:35", "kind": "일상점검", "elapsed": "00:00:07", "date": "2025-04-30", "sh": "01", "eh": "01"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정전", "detect": "2025-06-14 05:45:36", "restore": "2025-06-14 06:44:44", "kind": "일상점검", "elapsed": "00:59:08", "date": "2025-06-14", "sh": "05", "eh": "06"}, {"region": "경주", "id": "75", "name": "광명녹지", "event": "2차압력 상한", "detect": "2025-07-01 01:32:42", "restore": "2025-07-01 02:01:14", "kind": "일상점검", "elapsed": "00:28:32", "date": "2025-07-01", "sh": "01", "eh": "02"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "RTU 외함", "detect": "2025-08-04 00:34:22", "restore": "2025-08-04 00:51:23", "kind": "일상점검", "elapsed": "00:17:01", "date": "2025-08-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "통신이상", "detect": "2025-08-04 00:44:51", "restore": "2025-08-04 00:49:43", "kind": "일상점검", "elapsed": "00:04:52", "date": "2025-08-04", "sh": "00", "eh": "00"}, {"region": "경주", "id": "43", "name": "현곡택지", "event": "RTU 외함", "detect": "2025-08-04 01:39:01", "restore": "2025-08-04 01:47:21", "kind": "일상점검", "elapsed": "00:08:20", "date": "2025-08-04", "sh": "01", "eh": "01"}, {"region": "경주", "id": "31", "name": "도지코아루", "event": "정전", "detect": "2025-08-20 02:37:28", "restore": "2025-08-20 02:37:34", "kind": "일상점검", "elapsed": "00:00:06", "date": "2025-08-20", "sh": "02", "eh": "02"}, {"region": "경주", "id": "77", "name": "화천녹지", "event": "정전", "detect": "2025-09-01 09:23:58", "restore": "2025-09-01 10:47:11", "kind": "일상점검", "elapsed": "01:23:13", "date": "2025-09-01", "sh": "09", "eh": "10"}, {"region": "경주", "id": "77", "name": "화천녹지", "event": "RTU 외함", "detect": "2025-09-01 10:07:02", "restore": "2025-09-01 10:10:28", "kind": "일상점검", "elapsed": "00:03:26", "date": "2025-09-01", "sh": "10", "eh": "10"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "2차압력 하한", "detect": "2025-09-14 13:47:29", "restore": "2025-09-14 13:47:31", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-09-14", "sh": "13", "eh": "13"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "통신이상", "detect": "2025-09-21 22:13:35", "restore": "2025-09-21 22:44:19", "kind": "일상점검", "elapsed": "00:30:44", "date": "2025-09-21", "sh": "22", "eh": "22"}, {"region": "경주", "id": "64", "name": "외동모화", "event": "RTU 외함", "detect": "2025-09-30 17:46:35", "restore": "2025-09-30 17:54:17", "kind": "일상점검", "elapsed": "00:07:42", "date": "2025-09-30", "sh": "17", "eh": "17"}, {"region": "경주", "id": "64", "name": "외동모화", "event": "정전", "detect": "2025-09-30 17:50:53", "restore": "2025-09-30 17:52:39", "kind": "일상점검", "elapsed": "00:01:46", "date": "2025-09-30", "sh": "17", "eh": "17"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 18:50:35", "restore": "2025-10-07 18:50:37", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "18", "eh": "18"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "RTU 외함", "detect": "2025-10-07 19:16:12", "restore": "2025-10-07 19:24:42", "kind": "일상점검", "elapsed": "00:08:30", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정전", "detect": "2025-10-07 19:16:37", "restore": "2025-10-07 19:16:39", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정압실문", "detect": "2025-10-07 19:17:50", "restore": "2025-10-07 19:23:58", "kind": "일상점검", "elapsed": "00:06:08", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "RTU 외함", "detect": "2025-10-07 19:27:39", "restore": "2025-10-07 19:30:07", "kind": "일상점검", "elapsed": "00:02:28", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 19:45:35", "restore": "2025-10-07 19:45:37", "kind": "일상점검", "elapsed": "00:00:02", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "정압실문", "detect": "2025-10-07 19:46:51", "restore": "2025-10-07 19:53:35", "kind": "일상점검", "elapsed": "00:06:44", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-07 19:47:00", "restore": "2025-10-07 19:47:14", "kind": "일상점검", "elapsed": "00:00:14", "date": "2025-10-07", "sh": "19", "eh": "19"}, {"region": "경주", "id": "11", "name": "용강서한", "event": "SSV2", "detect": "2025-10-08 04:20:15", "restore": "2025-10-08 04:20:21", "kind": "일상점검", "elapsed": "00:00:06", "date": "2025-10-08", "sh": "04", "eh": "04"}, {"region": "경주", "id": "25", "name": "성동조은", "event": "통신이상", "detect": "2025-10-21 23:23:08", "restore": "2025-10-21 23:25:16", "kind": "일상점검", "elapsed": "00:02:08", "date": "2025-10-21", "sh": "23", "eh": "23"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-28 17:31:58", "restore": "2025-10-28 17:32:10", "kind": "일상점검", "elapsed": "00:00:12", "date": "2025-10-28", "sh": "17", "eh": "17"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2025-10-28 20:08:11", "restore": "2025-10-28 20:08:27", "kind": "일상점검", "elapsed": "00:00:16", "date": "2025-10-28", "sh": "20", "eh": "20"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "통신이상", "detect": "2025-11-12 03:22:32", "restore": "2025-11-12 04:31:37", "kind": "일상점검", "elapsed": "01:09:05", "date": "2025-11-12", "sh": "03", "eh": "04"}, {"region": "경주", "id": "61", "name": "외동벽산", "event": "RTU 외함", "detect": "2025-11-12 04:31:43", "restore": "2025-11-12 04:32:14", "kind": "일상점검", "elapsed": "00:00:31", "date": "2025-11-12", "sh": "04", "eh": "04"}, {"region": "경주", "id": "24", "name": "동천푸르지오", "event": "정전", "detect": "2026-01-20 05:14:44", "restore": "2026-01-20 05:14:48", "kind": "실제", "elapsed": "00:00:04", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "17", "name": "황성삼보", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "18", "name": "황성유원", "event": "정전", "detect": "2026-01-20 05:14:46", "restore": "2026-01-20 05:15:04", "kind": "실제", "elapsed": "00:00:18", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "정전", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:20:46", "kind": "실제", "elapsed": "00:05:59", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 해제", "detect": "2026-01-20 05:14:47", "restore": "2026-01-20 05:14:47", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV1 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV2 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "1", "name": "경주지구", "event": "MOV3 OPEN 이벤트 감지", "detect": "2026-01-20 05:20:45", "restore": "2026-01-20 05:20:45", "kind": "실제", "elapsed": "00:00:00", "date": "2026-01-20", "sh": "05", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "SSV1", "detect": "2026-04-01 02:43:09", "restore": "2026-04-01 03:53:05", "kind": "일상점검", "elapsed": "01:09:56", "date": "2026-04-01", "sh": "02", "eh": "03"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 03:37:58", "restore": "2026-04-01 05:17:19", "kind": "일상점검", "elapsed": "01:39:21", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "RTU 외함", "detect": "2026-04-01 03:40:46", "restore": "2026-04-01 05:21:08", "kind": "일상점검", "elapsed": "01:40:22", "date": "2026-04-01", "sh": "03", "eh": "05"}, {"region": "경주", "id": "39", "name": "마동녹지", "event": "정압실문", "detect": "2026-04-01 05:18:38", "restore": "2026-04-01 05:19:51", "kind": "일상점검", "elapsed": "00:01:13", "date": "2026-04-01", "sh": "05", "eh": "05"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 18:34:30", "restore": "2026-04-03 19:18:37", "kind": "일상점검", "elapsed": "00:44:07", "date": "2026-04-03", "sh": "18", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:18:49", "restore": "2026-04-03 19:20:20", "kind": "일상점검", "elapsed": "00:01:31", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "통신이상", "detect": "2026-04-03 19:25:50", "restore": "2026-04-03 19:59:26", "kind": "일상점검", "elapsed": "00:33:36", "date": "2026-04-03", "sh": "19", "eh": "19"}, {"region": "경주", "id": "20", "name": "금장신한", "event": "RTU 외함", "detect": "2026-04-03 19:59:26", "restore": "2026-04-03 20:12:15", "kind": "일상점검", "elapsed": "00:12:49", "date": "2026-04-03", "sh": "19", "eh": "20"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-04-04 11:46:37", "restore": "2026-04-04 11:49:25", "kind": "실제", "elapsed": "00:02:48", "date": "2026-04-04", "sh": "11", "eh": "11"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-01 22:52:27", "restore": "2026-05-02 17:52:04", "kind": "오작동", "elapsed": "18:59:37", "date": "2026-05-01", "sh": "22", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 14:53:40", "restore": "2026-05-02 16:46:30", "kind": "오작동", "elapsed": "01:52:50", "date": "2026-05-02", "sh": "14", "eh": "16"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "RTU 외함", "detect": "2026-05-02 16:46:37", "restore": "2026-05-02 17:53:05", "kind": "오작동", "elapsed": "01:06:28", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "통신이상", "detect": "2026-05-02 16:51:53", "restore": "2026-05-02 17:51:58", "kind": "오작동", "elapsed": "01:00:05", "date": "2026-05-02", "sh": "16", "eh": "17"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:09:23", "restore": "2026-05-03 10:09:25", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-03 10:10:17", "restore": "2026-05-03 10:10:19", "kind": "오작동", "elapsed": "00:00:02", "date": "2026-05-03", "sh": "10", "eh": "10"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 08:08:59", "restore": "2026-05-20 08:09:01", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "08", "eh": "08"}, {"region": "경주", "id": "41", "name": "강동녹지", "event": "정전", "detect": "2026-05-20 18:40:07", "restore": "2026-05-20 18:40:09", "kind": "일상점검", "elapsed": "00:00:02", "date": "2026-05-20", "sh": "18", "eh": "18"}];
 let ROWS = [];
 let editIdx = -1;
+
 const $ = s => document.querySelector(s);
 const DT=/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g, ELAPSED=/\b\d{2}:\d{2}:\d{2}\b/, IDRE=/(?:^|\s)(\d{1,3})(?=\s)/g;
 const KINDS=['실제','일상점검','오작동','정기점검','점검'];
+
 // ---- Firebase 동기화 ----
 function setSyncStatus(state, msg){
   const dot=document.getElementById('syncDot'), bar=document.getElementById('syncMsg');
@@ -256,6 +409,7 @@ function setSyncStatus(state, msg){
   dot.className='sync-dot '+(state==='ok'?'ok':state==='err'?'err':'ing');
   bar.textContent=msg;
 }
+
 function load(){
   // 로컬 캐시로 일단 표시
   try{const s=JSON.parse(localStorage.getItem('alarmRows')||'null');
@@ -281,14 +435,10 @@ function load(){
     window.addEventListener('fb-ready',()=>load(),{once:true});
   }
 }
-let _uploading = false;
+
 async function uploadEmbedded(){
-  if(!window._fb||_uploading)return;
-  _uploading=true;
-  const {db,collection,getDocs,addDoc,COL}=window._fb;
-  // 업로드 전 다시 한번 확인 (동시 접속 방지)
-  const check=await getDocs(collection(db,COL));
-  if(!check.empty){_uploading=false;return;}
+  if(!window._fb)return;
+  const {db,collection,addDoc,COL}=window._fb;
   setSyncStatus('ing','내장 데이터 업로드 중…');
   try{
     for(const r of EMBEDDED){
@@ -297,13 +447,14 @@ async function uploadEmbedded(){
     }
     setSyncStatus('ok','Firebase 실시간 동기화 중');
   }catch(e){setSyncStatus('err','업로드 실패: '+e.message);}
-  _uploading=false;
 }
+
 async function save(){
   // ROWS 전체를 Firebase에 동기화 (추가/수정/삭제 모두)
   // 실제 추가/수정/삭제는 아래 개별 함수에서 처리
   localStorage.setItem('alarmRows',JSON.stringify(ROWS));
 }
+
 async function fbAdd(row){
   if(!window._fb){save();buildFilters();render();return;}
   const {db,collection,addDoc,COL}=window._fb;
@@ -312,6 +463,7 @@ async function fbAdd(row){
   try{await addDoc(collection(db,COL),data);setSyncStatus('ok','Firebase 실시간 동기화 중');}
   catch(e){setSyncStatus('err','저장 실패: '+e.message);}
 }
+
 async function fbUpdate(row){
   if(!window._fb||!row._fid){save();buildFilters();render();return;}
   const {db,doc,setDoc,COL}=window._fb;
@@ -320,6 +472,7 @@ async function fbUpdate(row){
   try{await setDoc(doc(db,COL,_fid),data);setSyncStatus('ok','Firebase 실시간 동기화 중');}
   catch(e){setSyncStatus('err','수정 실패: '+e.message);}
 }
+
 async function fbDelete(fid){
   if(!window._fb||!fid)return;
   const {db,doc,deleteDoc,COL}=window._fb;
@@ -338,6 +491,7 @@ function enrich(r){
   r.elapsed=elapsedCalc(r.detect,r.restore);
   r.date=r.detect.slice(0,10);r.sh=r.detect.slice(11,13);r.eh=r.restore.slice(11,13);return r;
 }
+
 async function pdfToText(file){
   const buf=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf}).promise;let parts=[];
   for(let p=1;p<=pdf.numPages;p++){const tc=await(await pdf.getPage(p)).getTextContent();parts.push(tc.items.map(i=>i.str).join(' '));}
@@ -357,10 +511,11 @@ function parsePDF(text){
   }
   return rows;
 }
+
 function tagClass(ev){return ev.includes('정전')?'power':(/MOV|SSV/i.test(ev)?'mov':'etc');}
 function opt(sel,vals,suf=''){const c=sel.value;sel.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option value="${v}">${v}${suf}</option>`).join('');sel.value=c;}
 function buildFilters(){
-  opt($('#f-region'),[...new Set(ROWS.map(r=>r.region))].filter(Boolean).sort());
+  const frSel=$('#f-region');const frCur=frSel.value;frSel.innerHTML="<option value=''>전체</option><option value='경주'>경주</option><option value='안강'>안강</option><option value='외동'>외동</option><option value='영천'>영천</option>";frSel.value=frCur;
   opt($('#f-name'),[...new Set(ROWS.map(r=>r.name))].sort());
   opt($('#f-event'),[...new Set(ROWS.map(r=>r.event))].filter(Boolean).sort());
   opt($('#f-date'),[...new Set(ROWS.map(r=>r.date))].sort());
@@ -396,7 +551,7 @@ function render(){
   $('#c-station').textContent=new Set(fRows.map(r=>r.name)).size;
   $('#c-mov').textContent=fRows.filter(r=>/MOV|SSV/i.test(r.event)).length;
   $('#c-power').textContent=fRows.filter(r=>r.event.includes('정전')).length;
-  $('#hd-region').textContent=[...new Set(fRows.map(r=>r.region))].filter(Boolean).join('·')||'전체';
+  $('#hd-region').textContent='경주·안강·외동·영천';
   $('#listCount').textContent=`${fRows.length}건`;
   const list=$('#list');
   if(!data.length){list.innerHTML='<div class="empty">조건에 맞는 이벤트가 없습니다.</div>';return;}
@@ -418,6 +573,7 @@ function render(){
       </div>` : ''}
     </div>`;}).join('');
 }
+
 // ---- 추가/수정 시트 ----
 function toLocal(s){return s? s.replace(' ','T'):'';}
 function fromLocal(s){return s? s.replace('T',' ').slice(0,19).padEnd(19,':00').slice(0,19):'';}
@@ -452,18 +608,20 @@ function doSave(){
   }
   $('#overlay').classList.remove('on');
 }
+
 async function handleFile(file){
   $('#spinner').style.display='block';$('#fname').textContent=file.name;
   try{
     const text=await pdfToText(file);const parsed=parsePDF(text);
     if(!parsed.length){alert('이 PDF에서 데이터를 읽지 못했습니다.\n(스캔 이미지 PDF일 수 있습니다)\n\n추출: '+(text.slice(0,120)||'(비어 있음)'));$('#fname').textContent='';return;}
-    const doAdd=confirm(parsed.length+'건을 찾았습니다.\n확인=기존에 추가 / 취소=현재 목록 교체');
-    if(!doAdd)ROWS=[];
+    if(!confirm(parsed.length+'건을 찾았습니다.\n기존 데이터에 누적 추가합니다.\n계속할까요?'))return;
+    
     setSyncStatus('ing',`PDF ${parsed.length}건 업로드 중…`);
     for(const r of parsed){await fbAdd(r);}
   }catch(err){alert('PDF 분석 오류: '+err.message);}
   finally{$('#spinner').style.display='none';}
 }
+
 $('#addBtn').onclick=openAdd;
 $('#saveBtn').onclick=doSave;
 $('#cancelBtn').onclick=()=>$('#overlay').classList.remove('on');
@@ -471,8 +629,10 @@ $('#overlay').onclick=e=>{if(e.target===$('#overlay'))$('#overlay').classList.re
 $('#pdfInput').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
 ['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).addEventListener('change',()=>{render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();}));
 $('#resetBtn').onclick=()=>{['#f-region','#f-name','#f-event','#f-date','#f-kind','#f-sh','#f-eh'].forEach(s=>$(s).value='');render();if(document.getElementById('tab-chart').classList.contains('active'))renderCharts();};
-$('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(118건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');load();buildFilters();render();$('#fname').textContent='';}}; 
+$('#restoreBtn').onclick=()=>{if(confirm('내장된 원본 데이터(77건)로 되돌릴까요?\n추가/수정한 내용은 사라집니다.')){localStorage.removeItem('alarmRows');load();buildFilters();render();$('#fname').textContent='';}}; 
+
 load();buildFilters();render();
+
 // ---- 탭 전환 ----
 const CHARTS = {};
 function switchTab(name){
@@ -481,11 +641,15 @@ function switchTab(name){
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelector(`.tabnav button[onclick="switchTab('${name}')"]`).classList.add('active');
   if(name==='chart') renderCharts();
+  if(name==='maint') renderMaintList();
 }
+
 // ---- 차트 렌더링 ----
 const PALETTE = ['#4F46E5','#E04A40','#2F6FE0','#16A34A','#D97706','#7C3AED','#0891B2','#BE185D','#6B7280'];
 const DOW_KR = ['일','월','화','수','목','금','토'];
+
 function destroyChart(id){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}}
+
 function renderCharts(){
   if(typeof Chart==='undefined'){
     ['pie','rank','hour','month','dow'].forEach(id=>{
@@ -503,6 +667,7 @@ function renderCharts(){
     });
     return;
   }
+
   // 1. 이벤트 유형 파이차트
   {
     const counts={};
@@ -526,6 +691,7 @@ function renderCharts(){
       options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:11,padding:6}}},cutout:'58%'}
     });
   }
+
   // 2. 정압기별 순위 (상위 8)
   {
     const counts={};
@@ -549,6 +715,7 @@ function renderCharts(){
       }
     });
   }
+
   // 3. 시간대별 빈도
   {
     const hrs=Array(24).fill(0);
@@ -575,6 +742,7 @@ function renderCharts(){
       }
     });
   }
+
   // 4. 월별 추이
   {
     const mMap={};
@@ -602,6 +770,7 @@ function renderCharts(){
       }
     });
   }
+
   // 5. 요일별 빈도
   {
     const dows=Array(7).fill(0);
@@ -630,6 +799,7 @@ function renderCharts(){
     });
   }
 }
+
 // ---- 관리자 권한 ----
 window.IS_ADMIN = false;
 window.checkPw = function(){
@@ -649,6 +819,184 @@ window.checkPw = function(){
     document.getElementById('pwInput').value = '';
   }
 };
+
+
+// ════ 설비관리 ════
+let currentMaintName = '';
+
+function renderMaintList(){
+  const q = (document.getElementById('maintSearch')?.value||'').trim().toLowerCase();
+  // 경보이력에서 정압기명 추출
+  const names = [...new Set(ROWS.map(r=>r.name))].filter(Boolean).sort();
+  const filtered = q ? names.filter(n=>n.toLowerCase().includes(q)) : names;
+  const wrap = document.getElementById('maintCards');
+  if(!wrap)return;
+  if(!filtered.length){wrap.innerHTML='<div class="maint-empty">정압기가 없습니다</div>';return;}
+  // Firebase에서 이력 수 가져오기
+  const fb = window._fb;
+  if(fb){
+    const {db,collection,getDocs} = fb;
+    getDocs(collection(db,'maintRecs')).then(snap=>{
+      const recMap={};
+      snap.docs.forEach(d=>{
+        const data=d.data();
+        recMap[data.stationName] = (recMap[data.stationName]||[]);
+        recMap[data.stationName].push({id:d.id,...data});
+      });
+      wrap.innerHTML = filtered.map(name=>{
+        const recs = (recMap[name]||[]).sort((a,b)=>b.date.localeCompare(a.date));
+        const cnt = recs.length;
+        const last = cnt ? recs[0].date+' · '+recs[0].worker : '이력 없음';
+        return `<div class="maint-card" onclick="openMaintDetail('${name.replace(/'/g,"\'")}')">
+          <div class="maint-card-hd">
+            <span class="maint-card-name">📍 ${name}</span>
+            <span class="maint-card-cnt">이력 ${cnt}건</span>
+          </div>
+          <div class="maint-card-last">최근: ${last}</div>
+        </div>`;
+      }).join('');
+    });
+  } else {
+    wrap.innerHTML = filtered.map(name=>`<div class="maint-card" onclick="openMaintDetail('${name.replace(/'/g,"\'")}')">
+      <div class="maint-card-hd"><span class="maint-card-name">📍 ${name}</span><span class="maint-card-cnt">이력 0건</span></div>
+      <div class="maint-card-last">최근: 이력 없음</div>
+    </div>`).join('');
+  }
+}
+
+function openMaintDetail(name){
+  currentMaintName = name;
+  document.getElementById('maintList').style.display='none';
+  const det = document.getElementById('maintDetail');
+  det.classList.add('active');
+  document.getElementById('maintDetailName').textContent = '📍 '+name;
+  // 관리자 폼 표시 여부
+  document.getElementById('maintFormWrap').style.display = window.IS_ADMIN ? 'block' : 'none';
+  // 날짜 기본값
+  const today = new Date().toISOString().slice(0,10);
+  const df = document.getElementById('mf-date');
+  if(df && !df.value) df.value = today;
+  // 사진 미리보기 초기화
+  document.getElementById('mf-preview').innerHTML='';
+  loadMaintRecs(name);
+}
+
+function closeMaintDetail(){
+  document.getElementById('maintList').style.display='block';
+  document.getElementById('maintDetail').classList.remove('active');
+  renderMaintList();
+}
+
+function loadMaintRecs(name){
+  const wrap = document.getElementById('maintRecs');
+  wrap.innerHTML='<div class="maint-empty">불러오는 중…</div>';
+  if(!window._fb){
+    window.addEventListener('fb-ready',()=>loadMaintRecs(name),{once:true});
+    return;
+  }
+  const fb = window._fb;
+  const {db,collection,getDocs} = fb;
+  getDocs(collection(db,'maintRecs')).then(snap=>{
+    const recs = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .filter(r=>r.stationName===name)
+      .sort((a,b)=>b.date.localeCompare(a.date));
+    if(!recs.length){wrap.innerHTML='<div class="maint-empty">보수 이력이 없습니다</div>';return;}
+    wrap.innerHTML = recs.map(r=>{
+      const imgs = (r.imgs||[]).map(src=>`<img src="${src}" onclick="openLightbox('${src}')" alt="현장사진">`).join('');
+      const delBtn = window.IS_ADMIN ? `<button class="maint-rec-del" onclick="window.deleteMaintRec('${r.id}')">🗑 삭제</button>` : '';
+      return `<div class="maint-rec">
+        <div class="maint-rec-hd">
+          <span class="maint-rec-date">${r.date}</span>
+          <span class="maint-rec-worker">👤 ${r.worker}</span>
+        </div>
+        <div class="maint-rec-title">${r.title}</div>
+        <div class="maint-rec-body">${r.body||''}</div>
+        ${imgs ? `<div class="maint-rec-imgs">${imgs}</div>` : ''}
+        ${delBtn}
+      </div>`;
+    }).join('');
+  });
+}
+
+// 사진 미리보기
+document.addEventListener('DOMContentLoaded',()=>{
+  const imgInput = document.getElementById('mf-imgs');
+  if(imgInput) imgInput.addEventListener('change', e=>{
+    const files = [...e.target.files].slice(0,2);
+    const preview = document.getElementById('mf-preview');
+    preview.innerHTML='';
+    files.forEach((file,i)=>{
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        preview.innerHTML += `<div class="img-preview-item">
+          <img src="${ev.target.result}" alt="미리보기">
+          <button onclick="removePreviewImg(${i})">✕</button>
+        </div>`;
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+});
+
+window.removePreviewImg = function(idx){
+  const input = document.getElementById('mf-imgs');
+  const dt = new DataTransfer();
+  [...input.files].forEach((f,i)=>{ if(i!==idx) dt.items.add(f); });
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change'));
+};
+
+// 이미지 → base64
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+window.addMaintRec = async function(){
+  const date = document.getElementById('mf-date').value;
+  const worker = document.getElementById('mf-worker').value.trim();
+  const title = document.getElementById('mf-title').value.trim();
+  const body = document.getElementById('mf-body').value.trim();
+  const imgFiles = [...document.getElementById('mf-imgs').files].slice(0,2);
+  if(!date||!worker||!title){alert('날짜, 담당자, 문제 내용은 필수입니다.');return;}
+  const fb = window._fb;
+  if(!fb){alert('Firebase 연결 안됨');return;}
+  // 이미지 base64 변환
+  const imgs = await Promise.all(imgFiles.map(f=>fileToBase64(f)));
+  const rec = {stationName:currentMaintName, date, worker, title, body, imgs, createdAt:new Date().toISOString()};
+  const {db,collection,addDoc} = fb;
+  try{
+    await addDoc(collection(db,'maintRecs'), rec);
+    // 폼 초기화
+    document.getElementById('mf-date').value='';
+    document.getElementById('mf-worker').value='';
+    document.getElementById('mf-title').value='';
+    document.getElementById('mf-body').value='';
+    document.getElementById('mf-imgs').value='';
+    document.getElementById('mf-preview').innerHTML='';
+    loadMaintRecs(currentMaintName);
+  }catch(e){alert('저장 실패: '+e.message);}
+};
+
+window.deleteMaintRec = async function(id){
+  if(!confirm('이 이력을 삭제할까요?'))return;
+  const fb=window._fb;
+  if(!fb)return;
+  const {db,doc,deleteDoc}=fb;
+  await deleteDoc(doc(db,'maintRecs',id));
+  loadMaintRecs(currentMaintName);
+};
+
+function openLightbox(src){
+  document.getElementById('lbImg').src=src;
+  document.getElementById('imgLightbox').classList.add('on');
+}
+
 </script>
 </body>
 </html>
